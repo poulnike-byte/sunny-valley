@@ -59,7 +59,7 @@ window.addEventListener('error',e=>{ document.title='ERR '+e.message+' @'+e.line
 //  мягко возвращают на последний цветок-чекпоинт.
 //  Игра НЕ связана с монетами/заданиями приложения.
 // ============================================================
-const W=1280,H=720,T=48;               // экран и размер тайла
+let W=1280; const H=720,T=48;               // экран и размер тайла
 // ===== УРОВЕНЬ 2: ВЕРТИКАЛЬ — мир может быть выше экрана (ROWS задаётся уровнем), камера следует по Y =====
 let ROWS=15, WH=720, camY=0; const movers=[]; let valves=[], waves=[];
 // ---------- Уровень (строится кодом, проверяется ботом) ----------
@@ -133,6 +133,14 @@ const isOneWay=(tx,ty)=>tile(tx,ty)==='=';
 
 // ---------- Состояние ----------
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+// Во весь экран: высота мира фиксирована (720), ширина подстраивается под пропорции экрана (1280..1800).
+function fitScreen(){
+  const wrap=document.getElementById('wrap'), sw=wrap.clientWidth||innerWidth, sh=wrap.clientHeight||innerHeight;
+  const nw=Math.max(1280,Math.min(1800,Math.round(H*sw/sh/2)*2));
+  if(cv.width!==nw){ W=nw; cv.width=nw; }
+  const k=Math.min(sw/W,sh/H); cv.style.width=Math.round(W*k)+'px'; cv.style.height=Math.round(H*k)+'px';
+}
+fitScreen(); addEventListener('resize',fitScreen); addEventListener('orientationchange',()=>setTimeout(fitScreen,200));
 const SAVE='yamogu_sunny_valley_v1';
 let save={best:{},char:'vika'};
 try{ Object.assign(save,JSON.parse(localStorage.getItem(SAVE)||'{}')); }catch(e){}

@@ -1456,7 +1456,9 @@ function render(){
 // ---------- Цикл ----------
 let acc=0,last=performance.now();
 let domN=0, bcTxt='';
+let prevSt='menu';
 function frame(now){
+  if(prevSt==='play'&&state!=='play'&&state!=='done') releaseInputs(); prevSt=state;
   const raw=(now-last)/1000;
   if(raw<0.0125){ requestAnimationFrame(frame); return; }
   let dtf=Math.min(.1,raw); if(Math.abs(dtf-DT)<0.003) dtf=DT;
@@ -1533,6 +1535,8 @@ function startGame(n){ if(n)LEVEL=n; if(state==='menu'){ save.cape.charges=2; st
   if(n) openStory(STORY.pre[LEVEL]); }   // вступление показывается при запуске уровня из меню или после предыдущего
 function advance(){ if(state==='done'){ const go=()=>{ if(LEVEL<3) startGame(LEVEL+1); else startGame(); }; openStory(STORY.post[LEVEL],go); } else startGame(); }
 function setKey(k,v){ if(k==='jump'&&v&&!keys.jump) jumpPressed=true; keys[k]=v; }
+// Сброс всех зажатых кнопок и джойстика (пауза, сворачивание, поворот экрана, потерянное «отпускание» пальца на iPhone)
+function releaseInputs(){ for(const k of ['left','right','jump','fire']) keys[k]=false; jumpPressed=false; capePressed=false; if(window.__joyReset) window.__joyReset(); for(const id of ['bl','br','bj','bf','bc']){ const el=document.getElementById(id); if(el) el.classList.remove('on'); } }
 addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(['arrowleft','a'].includes(k)) setKey('left',true); else if(['arrowright','d'].includes(k)) setKey('right',true);
@@ -1569,22 +1573,25 @@ if('ontouchstart' in window||navigator.maxTouchPoints>0||/touch=1/.test(location
 (()=>{ const joy=document.getElementById('joy'), knob=document.getElementById('joyk'); let id=null, cx=0, cy=0;
   const R=()=>joy.offsetWidth/2;
   const upd=(x,y)=>{ let dx=x-cx, dy=y-cy; const r=R(), d=Math.hypot(dx,dy); if(d>r){ dx*=r/d; dy*=r/d; } knob.style.setProperty('--x',dx+'px'); knob.style.setProperty('--y',dy+'px'); setKey('left',dx<-r*.25); setKey('right',dx>r*.25); };
-  const end=e=>{ if(e.pointerId!==id) return; id=null; joy.classList.remove('free'); joy.style.left=joy.style.top=''; knob.style.setProperty('--x','0px'); knob.style.setProperty('--y','0px'); setKey('left',false); setKey('right',false); };
+  const reset=()=>{ id=null; joy.classList.remove('free'); joy.style.left=joy.style.top=''; knob.style.setProperty('--x','0px'); knob.style.setProperty('--y','0px'); setKey('left',false); setKey('right',false); }; window.__joyReset=reset;
+  const end=e=>{ if(e.pointerId!==id) return; reset(); };
   cv.addEventListener('pointerdown',e=>{ if(state!=='play'||!touchMode()||id!==null||e.clientX>innerWidth*.5) return; e.preventDefault(); id=e.pointerId; try{cv.setPointerCapture(id);}catch(_){}
     const r=R(); cx=Math.min(innerWidth*.5-r,Math.max(r+4,e.clientX)); cy=Math.min(innerHeight-r-4,Math.max(r+4,e.clientY));
     joy.classList.add('free'); joy.style.left=(cx-r)+'px'; joy.style.top=(cy-r)+'px'; upd(e.clientX,e.clientY); });
   cv.addEventListener('pointermove',e=>{ if(e.pointerId===id) upd(e.clientX,e.clientY); });
-  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end); cv.addEventListener('lostpointercapture',end); addEventListener('pointerup',end); addEventListener('pointercancel',end);
 })();
 if(/press=1/.test(location.search)){ for(const id of ['bl','br','bj']) document.getElementById(id).classList.add('on'); }
-addEventListener('blur',()=>{ if(state==='play')state='pause'; });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='play') state='pause'; });
+addEventListener('blur',()=>{ if(state==='play')state='pause'; releaseInputs(); });
+addEventListener('pagehide',releaseInputs); addEventListener('orientationchange',releaseInputs);
+for(const ev of ['touchend','touchcancel']) addEventListener(ev,e=>{ if(e.touches&&e.touches.length===0) releaseInputs(); },{passive:true});   // все пальцы подняты — ничего не может оставаться зажатым
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='play') state='pause'; if(document.hidden) releaseInputs(); });
 // iPhone: разблокировать звук первым касанием, запретить зум щипком и прокрутку страницы
 function unlockAudio(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); const b=ac.createBuffer(1,1,22050), s=ac.createBufferSource(); s.buffer=b; s.connect(ac.destination); s.start(0); }catch(e){} }
 for(const ev of ['touchend','pointerdown','keydown']) addEventListener(ev,unlockAudio,{passive:true});
 for(const ev of ['gesturestart','gesturechange','gestureend']) document.addEventListener(ev,e=>e.preventDefault());
 document.addEventListener('touchmove',e=>{ if(e.touches.length>0) e.preventDefault(); },{passive:false});
-setInterval(()=>{ if(state==='play'&&innerHeight>innerWidth) state='pause'; },400);   // портрет: пауза, пока не повернут телефон
+setInterval(()=>{ if(state==='play'&&innerHeight>innerWidth){ state='pause'; releaseInputs(); } },400);   // портрет: пауза, пока не повернут телефон
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
 // ---------- Режим снимка: ?shot=N — бот играет N кадров, затем обычный показ ----------
@@ -1675,6 +1682,7 @@ if(/selftest/.test(location.search)){
     save.cape.charges=1; capeT=5; shootCd=0; tryFire(); res.push('выстрел снимает плащ='+(capeT===0?'OK':'FAIL'));
     hp=3; player.inv=0; hurtT=0; hurt('t',0); const h1=hp; hurt('t',0); res.push('защита 1,5 с: энергия '+h1+'->'+hp+(h1===2&&hp===2?' OK':' FAIL'));
     save.cape.charges=2; store(); log('CAPE_TEST '+res.join('; ')); log('DBG boss='+JSON.stringify(enemies.filter(e=>e.type==='B').map(e=>[Math.round(e.x),e.st,e.alive]))+' walk='+botWalk()+' px='+Math.round(player.x)+' bossDone='+bossDone+' prism='+JSON.stringify(prism)); log('DBG L1 tiles r9='+[112,113,114,115].map(c=>tile(c,9)).join('')+' r10='+[112,113,114,115].map(c=>tile(c,10)).join('')+' r11='+[112,113,114,115].map(c=>tile(c,11)).join('')); log('CMETA='+Object.keys(CMETA).length+' energy_on='+cOK('energy_on')); }
+  { keys.left=true; keys.right=true; keys.jump=true; keys.fire=true; capePressed=true; releaseInputs(); log('INPUT_RESET '+((!keys.left&&!keys.right&&!keys.jump&&!keys.fire&&!capePressed&&typeof window.__joyReset==='function')?'OK':'FAIL')); }
   // --- тесты новых механик (этап 17) ---
   { const res=[]; const idle={left:false,right:false,jump:false,jumpDown:false};
     // квест Тимки (L1)

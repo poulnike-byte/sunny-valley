@@ -75,8 +75,8 @@ let W=1280; const H=720,T=48;               // экран и размер тай
 let ROWS=15, WH=720, camY=0; const movers=[]; let valves=[], waves=[];
 // ---------- Уровень (строится кодом, проверяется ботом) ----------
 function buildLevel(n){
-  ROWS=(n===2)?32:15; WH=ROWS*T; const mv=[]; let arena=null;
-  const COLS=(n===2)?131:150, g=[...Array(ROWS)].map(()=>Array(COLS).fill(' '));
+  ROWS=(n===3)?60:(n===2)?32:15; WH=ROWS*T; const mv=[]; let arena=null; const path=[], wind=[];
+  const COLS=(n===3)?100:(n===2)?131:150, g=[...Array(ROWS)].map(()=>Array(COLS).fill(' '));
   const set=(x,y,ch)=>{ if(x>=0&&x<COLS&&y>=0&&y<ROWS) g[y][x]=ch; };
   const ground=(a,b,top=12)=>{ for(let x=a;x<=b;x++) for(let y=top;y<ROWS;y++) set(x,y,'#'); };
   const mover=(x,y,tiles,range,speed)=>mv.push({x:x*T,y:y*T,w:tiles*T,range:range*T,speed});
@@ -121,21 +121,40 @@ function buildLevel(n){
   arena={floorY:AR*T,left:98*T,right:128*T};
   set(2,G-1,'P');
   } else {
-  // Уровень 3 «Облачная гора»: острова, батуты, улитки подряд
-  put(22,8,'d'); put(84,8,'d'); put(30,7,'l'); put(66,5,'l'); put(127,3,'l');
-  ground(0,14); suns(5,10,5); put(9,11,'c');
-  ground(18,26); thorn(21,2); put(24,11,'n'); suns(19,10,5);
-  plat(29,10,3); plat(34,8,3); plat(39,10,3); suns(29,9,3); suns(34,7,3); suns(39,9,3);
-  ground(43,56); sp(46); plat(48,6,4); suns(48,5,4); put(52,11,'n'); put(55,11,'c'); suns(51,10,3);
-  plat(60,10,3); plat(65,8,3); plat(70,10,3); plat(75,8,3); suns(60,9,3); suns(65,7,3); suns(70,9,3); suns(75,7,3);
-  ground(79,96); put(80,11,'c'); thorn(84,2); put(89,11,'n'); suns(85,10,4); block(92,10,2,2); suns(92,9,2); put(96,11,'c');
-  ground(100,104); sp(103); plat(105,6,4); suns(105,5,4);
-  plat(111,8,3); plat(116,10,3); plat(121,8,3); plat(126,6,3); suns(111,7,3); suns(116,9,3); suns(121,7,3); suns(126,5,3);
-  ground(130,149); put(131,11,'c'); put(136,11,'n'); put(139,11,'n'); suns(133,10,5); thorn(142,2); suns(140,9,3); put(148,11,'F');
+  // Уровень 3 «Подъём к солнечному маяку» (60 рядов): облачный сад, башня, воздушный мост, ветер, арена Тучегона
+  const G3=57, AR=10;
+  const node=(x,row,len,o)=>path.push(Object.assign({x0:x*T,x1:(x+len)*T,top:row*T},o||{}));
+  const P=(x,row,len,o)=>{ plat(x,row,len); suns(x,row-1,len); node(x,row,len,o); };
+  const wz=(x,y,w,h,dir,period,onT,ph)=>wind.push({x:x*T,y:y*T,w:w*T,h:h*T,dir,period,onT,ph});
+  ground(0,14,G3); node(0,G3,15); suns(3,G3-1,5); suns(9,G3-1,4);
+  // облачный сад и нижняя башня (зигзаг)
+  P(16,55,3); P(20,53,3); P(24,51,3); put(26,50,'c');
+  P(20,49,3); P(16,47,3); P(12,45,3); put(13,44,'c');
+  plat(8,43,3); suns(8,42,3); put(9,42,'l');
+  P(16,43,3); P(20,41,3); P(24,39,3); put(27,40,'d'); P(28,37,3);
+  // воздушный мост с порывами
+  P(32,35,4); P(38,35,4); plat(39,37,3); suns(39,36,3); put(40,36,'l'); P(44,35,4); put(45,34,'c');
+  // верхняя башня
+  P(49,33,3); P(53,31,3);
+  P(57,29,4,{sp:58.5*T}); put(58,28,'^');
+  P(53,23,3); put(55,22,'c');
+  plat(49,21,3); suns(49,20,3); plat(45,19,3); suns(45,18,3); plat(41,17,3); suns(41,16,3); put(42,16,'l'); suns(44,14,3);
+  P(57,21,3); P(61,19,4,{sp:64.5*T}); put(64,18,'^');
+  P(66,14,3); P(70,12,3);
+  // арена Тучегона: облачный остров, стена справа, ступенька и верхняя площадка
+  block(74,AR,23,2); node(74,AR,23); block(97,0,2,12);
+  put(75,AR-1,'c'); put(77,AR-1,'V'); put(92,AR-1,'F'); put(94,3,'T');
+  plat(80,8,3); suns(80,7,3); plat(84,6,8); suns(84,5,8);
+  arena={floorY:AR*T,left:74*T,right:97*T,upperY:6*T,stepY:8*T,sx0:80*T,sx1:83*T,ux0:84*T,ux1:92*T,startY:G3*T,
+         home1:{x:93*T,y:AR*T-145},home2:{x:93*T,y:AR*T-310},prismX:86*T,lhX:95.5*T};
+  // ветер: сад (всегда, попутный), мост и верхняя башня (по таймеру, попеременно)
+  wz(4,51,10,6,1,0,0,0);
+  wz(34,30,10,8,1,6,2.4,0); wz(34,30,10,8,-1,6,2.4,3);
+  wz(47,21,14,14,-1,7,2.6,0); wz(47,21,14,14,1,7,2.6,3.5);
   }
   // старт
-  if(n!==2) set(2,11,'P');
-  return {g,COLS,rows:ROWS,movers:mv,arena};
+  if(n===1) set(2,11,'P'); if(n===3) set(2,56,'P');
+  return {g,COLS,rows:ROWS,movers:mv,arena,path,wind};
 }
 let LEVEL=1; let LV=buildLevel(1); let finishX=144;
 const tile=(tx,ty)=> (tx<0||tx>=LV.COLS)?'#':(ty<0?' ':(ty>=ROWS?' ':LV.g[ty][tx]));
@@ -176,6 +195,7 @@ if(!save.cape) save.cape={charges:2};          // синтетический к�
 function starFlags(n){ const b=save.best['v'+n]; if(!b) return [false,false,false]; if(b.s) return b.s; const k=b.stars||0; return [k>=1,k>=2,false]; }
 function toast(t,sec){ toastText=t; toastT=sec||2.2; }
 function mkEnemy(type,x,y){
+  if(type==='T'){ const A=LV.arena; return {type,x:A.home1.x,y:A.home1.y,w:100,h:120,dir:-1,alive:true,t:0,st:'idle',stT:2.5,hp:6,hit:0,cd:0,tx:A.home1.x,ty:A.home1.y,sx:A.home1.x,sy:A.home1.y,act:false,ph:1,seqI:0,gN:0,kind:'ball',lane:'ground',name:'Тучегон'}; }
   if(type==='Z') return {type,x:x*T,y:y*T,w:100,h:120,dir:-1,alive:true,t:0,st:'idle',stT:2.5,hp:3,hit:0,cd:0,valve:0,lastValve:-1,tx:x*T,ty:y*T,sx:x*T,sy:y*T,act:false,name:'Ручейник'};
   if(type==='B') return {type,x:x*T-20,y:12*T-96,w:84,h:96,dir:-1,alive:true,t:0,st:'closed',stT:1.6,hp:3,hit:0,cd:0,dashLeft:0,sx:x*T-20};
   if(type==='d') return {type,x:x*T+1,y:y*T+4,by:y*T+4,w:46,h:40,dir:-1,alive:true,t:0,st:'idle',stT:1.4,hp:2,hit:0,cd:0};
@@ -190,7 +210,7 @@ function resetLevel(){
   for(let y=0;y<ROWS;y++)for(let x=0;x<LV.COLS;x++){
     const c=LV.g[y][x];
     if(c==='o'){suns.add(x+','+y);sunTotal++;}
-    if(c==='n'||c==='r'||c==='d'||c==='B'||c==='Z'){enemies.push(mkEnemy(c,x,y)); LV.g[y][x]=' ';}
+    if(c==='n'||c==='r'||c==='d'||c==='B'||c==='Z'||c==='T'){enemies.push(mkEnemy(c,x,y)); LV.g[y][x]=' ';}
     if(c==='V'){ valves.push({tx:x,x:x*T-9,y:(y+1)*T,w:66}); LV.g[y][x]=' '; }
     if(c==='l'){flies.add(x+','+y);flyTotal++;}
     if(c==='P'){sx=x;sy=y;LV.g[y][x]=' ';}
@@ -221,6 +241,9 @@ const sJump=()=>tone(420,.14,'triangle',.09,260), sSun=()=>{tone(880,.08,'sine',
 // ---------- Физика ----------
 const RUN=290, ACC=2400, FRIC=2800, G=1750, JV=-710, MAXFALL=900, CUT=0.45;
 const DT=1/60;
+const WINDV=55;   // ветер сносит героя в воздухе, px/с
+const windOn=z=>z.period===0||((time+z.ph)%z.period)<z.onT;
+const windSoon=z=>z.period>0&&!windOn(z)&&(z.period-((time+z.ph)%z.period))<1.0;
 
 function overlapsSolid(x,y,w,h){
   const x0=Math.floor(x/T),x1=Math.floor((x+w-.01)/T),y0=Math.floor(y/T),y1=Math.floor((y+h-.01)/T);
@@ -230,7 +253,7 @@ function overlapsSolid(x,y,w,h){
 const deathLog=[];
 function respawn(reason){ deathLog.push(reason+'@'+Math.round(player.x)+','+Math.round(player.y));
   sBack(); fade=1;
-  player.x=checkpoint.x; player.y=checkpoint.y; player.vx=0; player.vy=0; player.rider=null; player.inv=.6; hp=3; capeT=0; hurtT=0; shots=[]; eballs=[];
+  player.x=checkpoint.x; player.y=checkpoint.y; player.vx=0; player.vy=0; player.rider=null; player.inv=.6; hp=3; capeT=0; hurtT=0; shots=[]; eballs=[]; waves=[]; for(const e of enemies) if(e.type==='T'&&e.alive&&e.st!=='leaving'){ e.st='idle'; e.stT=2; e.seqI=0; }
   for(let i=0;i<10;i++) parts.push(mkPart(player.x+17,player.y+30,'#fff8c0'));
 }
 function mkPart(x,y,col){ const a=Math.random()*Math.PI*2,s=60+Math.random()*180; return {x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-80,life:.6+Math.random()*.4,col,r:3+Math.random()*4}; }
@@ -256,10 +279,11 @@ function step(inp){
   p.jumpWas=inp.jump&&p.vy<0;
   p.vy=Math.min(MAXFALL,p.vy+G*DT);
   // X
-  p.x+=p.vx*DT;
+  let wv=0; if(LV.wind&&LV.wind.length&&!p.ground){ const wx=p.x+p.w/2, wy=p.y+p.h/2; for(const z of LV.wind) if(wx>=z.x&&wx<=z.x+z.w&&wy>=z.y&&wy<=z.y+z.h&&windOn(z)) wv+=z.dir*WINDV; }
+  p.x+=(p.vx+wv)*DT;
   if(p.x<0){p.x=0;p.vx=0;}
   if(overlapsSolid(p.x,p.y,p.w,p.h)){
-    if(p.vx>0) p.x=Math.floor((p.x+p.w)/T)*T-p.w-.01; else if(p.vx<0) p.x=(Math.floor(p.x/T)+1)*T+.01; p.vx=0;
+    const ev=p.vx+wv; if(ev>0) p.x=Math.floor((p.x+p.w)/T)*T-p.w-.01; else if(ev<0) p.x=(Math.floor(p.x/T)+1)*T+.01; p.vx=0;
   }
   // Y
   const prevBottom=p.y+p.h; p.y+=p.vy*DT; const wasGround=p.ground; p.ground=false;
@@ -291,7 +315,7 @@ function step(inp){
     else if(c==='c'&&checkpoint.tx!==tx){ hp=3; capeGranted=-9; checkpoint={x:tx*T+7,y:(ty+1)*T-p.h-.02,tx}; cpAt[tx]=time; sSun(); for(let i=0;i<14;i++)parts.push(mkPart(tx*T+24,ty*T+20,'#ff9de0')); }
     else if(c==='F' && state==='play' && bossOk()) finish();
   }
-  if(state==='play'&&cx1>=finishX&&cx0<=finishX&&p.y<H){ if(bossOk()) finish(); else if(toastT<=0) toast('Сначала верни призму у Хранителя!',2.2); }   // флаг высокий: достаточно пересечь его колонку
+  if(state==='play'&&cx1>=finishX&&cx0<=finishX&&p.y<H){ if(bossOk()) finish(); else if(toastT<=0) toast('Сначала верни призму у босса!',2.2); }   // флаг высокий: достаточно пересечь его колонку
   // враги, снаряды
   updateEnemies(p,prevBottom); updateShots(p); if(waves.length) updateWaves(p);
   if(prism&&!bossDone&&Math.abs(p.x+17-prism.x)<60&&Math.abs(p.y+30-prism.y)<150){ bossDone=true; toast('Призма возвращена! Беги к флажку',3); sWin(); for(let i=0;i<24;i++) parts.push(mkPart(prism.x,prism.y,['#ffd23a','#fff3a0','#ffb3d1'][i%3])); }
@@ -321,6 +345,7 @@ function updateEnemies(p,prevBottom){
     e.hit=Math.max(0,e.hit-DT);
     if(e.type==='B'){ updateBoss(e,p,prevBottom); continue; }
     if(e.type==='Z'){ updateZ(e,p); continue; }
+    if(e.type==='T'){ updateT(e,p); continue; }
     if(e.type==='d'){
       e.stT-=DT; e.y=e.by+Math.sin(time*3+e.x*0.01)*6;
       const dx=(p.x+p.w/2)-(e.x+e.w/2), onScreen=e.x-camX>-40&&e.x-camX<W+40;
@@ -364,7 +389,7 @@ function updateShots(p){
   for(const f of fx) f.t+=DT; fx=fx.filter(f=>f.t<0.4);
   for(const s of shots){ s.x+=s.vx*DT; s.y+=s.vy*DT; s.life-=DT;
     if(isSolid(Math.floor(s.x/T),Math.floor(s.y/T))){ s.life=0; continue; }
-    for(const e of enemies){ if(!e.alive||e.st==='retreat') continue; if(s.x>e.x-6&&s.x<e.x+e.w+6&&s.y>e.y-6&&s.y<e.y+e.h+6){ if(e.type==='B'){ if(e.st==='window') bossHit(e); } else if(e.type==='Z'){ if(e.st==='open') zHit(e); } else applyHit(e,s.vx>0?1:-1); fx.push({x:s.x,y:s.y,t:0}); s.life=0; break; } } }
+    for(const e of enemies){ if(!e.alive||e.st==='retreat') continue; if(s.x>e.x-6&&s.x<e.x+e.w+6&&s.y>e.y-6&&s.y<e.y+e.h+6){ if(e.type==='B'){ if(e.st==='window') bossHit(e); } else if(e.type==='Z'){ if(e.st==='open') zHit(e); } else if(e.type==='T'){ if(e.st==='open') tHit(e); } else applyHit(e,s.vx>0?1:-1); fx.push({x:s.x,y:s.y,t:0}); s.life=0; break; } } }
   shots=shots.filter(s=>s.life>0);
   for(const b of eballs){ b.x+=b.vx*DT; b.y+=b.vy*DT; b.life-=DT;
     if(isSolid(Math.floor(b.x/T),Math.floor(b.y/T))) b.life=0;
@@ -372,7 +397,7 @@ function updateShots(p){
   eballs=eballs.filter(b=>b.life>0);
 }
 function tryCape(){
-  { const bo=enemies.find(e=>(e.type==='B'||e.type==='Z')&&e.alive); if(bo&&!bossDone&&Math.abs(player.x-bo.x)<800){ if(state==='play'&&time-capeUseAt>0.6){ capeUseAt=time; toast('В арене босса плащ не действует — заряд не потрачен',2.4); } return; } }
+  { const bo=enemies.find(e=>(e.type==='B'||e.type==='Z'||e.type==='T')&&e.alive); if(bo&&!bossDone&&Math.abs(player.x-bo.x)<800){ if(state==='play'&&time-capeUseAt>0.6){ capeUseAt=time; toast('В арене босса плащ не действует — заряд не потрачен',2.4); } return; } }
   if(state!=='play'||capeT>0||time-capeUseAt<0.4) return;   // защита от двойного касания: заряд списывается один раз
   capeUseAt=time;
   if(capeGranted===checkpoint.tx){ /* бесплатный повтор на том же участке */ }
@@ -382,7 +407,7 @@ function tryCape(){
 }
 function botFire(){ const p=player; if(shootCd>0||capeT>0) return false; for(const e of enemies){ if(!e.alive||e.st==='retreat') continue; const dx=(e.x+e.w/2)-(p.x+p.w/2); if(dx*p.face>0&&Math.abs(dx)<210&&Math.abs((e.y+e.h/2)-(p.y+30))<90) return true; } return false; }
 // ================= БОСС УЛИТКА ХРАНИТЕЛЬ =================
-const bossOk=()=>!enemies.some(e=>e.type==='B'||e.type==='Z')||bossDone;
+const bossOk=()=>!enemies.some(e=>e.type==='B'||e.type==='Z'||e.type==='T')||bossDone;
 function bossHit(e){
   if(e.st!=='window') return;
   bossHits++; e.st=bossHits>=3?'leaving':'react'; e.stT=bossHits>=3?3.2:0.9;
@@ -436,6 +461,73 @@ function updateWaves(p){
   for(const w of waves){ w.x+=w.vx*DT;
     if(p.x<w.x+w.w&&p.x+p.w>w.x&&p.y<w.y+w.h&&p.y+p.h>w.y&&p.inv<=0&&hurtT<=0) hurt('wave',w.x+w.w/2); }
   waves=waves.filter(w=>w.x+w.w>LV.arena.left-60);
+}
+// ================= БОСС ДРАКОН ТУЧЕГОН (3 фазы по 2 попадания) =================
+const T_ATT={1:['ball'],2:['gust'],3:['ball','gust']};
+function tHit(e){
+  if(e.st!=='open') return; const A=LV.arena;
+  bossHits++; for(let i=0;i<16;i++) parts.push(mkPart(e.x+e.w/2,e.y+40,'#e6c8ff')); sBop();
+  if(bossHits>=6){ e.st='leaving'; e.stT=3.2; waves=[]; eballs=[]; prism={x:A.prismX,y:A.floorY-80}; toast('Тучегон успокоился и отдал призму! Забери её',3.2); }
+  else if(bossHits%2===0){ e.st='phase'; e.stT=3.6; hp=3; waves=[]; eballs=[]; e.seqI=0; toast(bossHits===2?'Первая задача решена! Теперь — ветер и высота':'Вторая задача решена! Теперь — зеркало маяка',3.4); }
+  else { e.st='react'; e.stT=1.0; toast('Попал! Ещё раз',1.6); }
+}
+function updateT(e,p){
+  const A=LV.arena, hx=p.x+p.w/2;
+  if(!e.act){ if(hx>A.left-40&&p.y<A.floorY+80) e.act=true; else return; }
+  e.stT-=DT; e.ph=Math.min(3,1+Math.floor(bossHits/2));
+  e.x+=(e.tx-e.x)*Math.min(1,DT*2.2); e.y+=(e.ty-e.y)*Math.min(1,DT*2.2); e.dir=-1;
+  const home=()=>{ const h=(e.ph===2)?A.home2:A.home1; e.tx=h.x; e.ty=h.y; };
+  const st=e.st;
+  if(st==='idle'){ home(); if(e.stT<=0){ e.kind=T_ATT[e.ph][e.seqI%T_ATT[e.ph].length]; if(e.kind==='gust'){ e.gN=(e.gN||0)+1; e.lane=(e.gN%2===1)?'ground':'upper'; } e.st='warn'; e.stT=1.3/THREAT; } }
+  else if(st==='warn'){ if(e.stT<=0){ e.st='attack'; e.stT=(e.kind==='ball')?0.5:0.9;
+      if(e.kind==='ball'){ eballs.push({x:e.x+10,y:A.floorY-38,vx:-190*THREAT,vy:0,life:6}); tone(520,.2,'triangle',.07,-220); }
+      else { waves.push({x:e.x+10,y:(e.lane==='upper'?A.upperY:A.floorY)-46,w:170,h:46,vx:-250*THREAT}); tone(260,.4,'sawtooth',.05,-120); } } }
+  else if(st==='attack'){ if(e.stT<=0){
+      if(e.ph===3){ e.seqI++; if(e.seqI>=2){ if(waves.length) return; e.seqI=0; const v=valves[0]; e.st='tired'; e.stT=9; if(v){ e.tx=v.x+v.w/2+190-e.w/2; e.ty=v.y-85-e.h/2; } toast('Встань на зеркало!',2.4); } else { e.st='idle'; e.stT=2.4; } }
+      else { e.st='open'; e.stT=3.2; toast('Брошь светится — стреляй!',2); sSun(); } } }
+  else if(st==='tired'){ const v=valves[0];
+    if(v&&p.ground&&hx>v.x-8&&hx<v.x+v.w+8&&Math.abs(p.y+p.h-v.y)<16){ e.st='open'; e.stT=3.6; toast('Ядро открыто — стреляй!',2); sSun(); }
+    else if(e.stT<=0){ e.st='idle'; e.stT=1.6; } }
+  else if(st==='open'){ if(e.stT<=0){ e.st='idle'; e.stT=1.8; } }
+  else if(st==='react'){ if(e.stT<=0){ e.st='idle'; e.stT=2.0; } }
+  else if(st==='phase'){ home(); if(e.stT<=0){ e.st='idle'; e.stT=1.6; } }
+  else if(st==='leaving'){ e.ty=e.sy-500; if(e.stT<=0) e.alive=false; }
+}
+// --- бот уровня 3: по списку площадок (LV.path), в арене — по задачам боса ---
+const BOT3={cur:0,arn:0};
+function standNode(nodes){ const p=player; if(!p.ground) return -1; const fy=p.y+p.h, hx=p.x+p.w/2; for(let i=0;i<nodes.length;i++){ const n=nodes[i]; if(Math.abs(fy-n.top)<=4&&hx>=n.x0-10&&hx<=n.x1+10) return i; } return -1; }
+function hopSteer(tn){
+  const p=player, hx=p.x+p.w/2, cx=(tn.x0+tn.x1)/2, dir=cx>hx?1:-1, out={l:false,r:false,jump:false,fire:false};
+  if(!p.ground){ if(Math.abs(cx-hx)>16){ if(dir>0) out.r=true; else out.l=true; } return out; }
+  if(dir>0) out.r=true; else out.l=true;
+  const edge=dir>0?tn.x0-(p.x+p.w):p.x-tn.x1;
+  if(edge<=100&&tn.top<=p.y+p.h+8) out.jump=true;
+  return out;
+}
+function botL3(){
+  if(LEVEL!==3||(prism&&!bossDone)||bossDone) return null;
+  const p=player, nodes=LV.path, tb=enemies.find(e=>e.type==='T'&&e.alive);
+  if(tb&&tb.act) return botT(tb);
+  const si=standNode(nodes); if(si>=0) BOT3.cur=si;
+  const n=nodes[BOT3.cur], nx=nodes[Math.min(nodes.length-1,BOT3.cur+1)];
+  if(p.ground&&n.sp!==undefined){ const dx=n.sp-(p.x+p.w/2); return {l:dx<-5,r:dx>5,jump:false,fire:false}; }
+  return hopSteer(nx);
+}
+function botT(e){
+  const p=player, A=LV.arena, hx=p.x+p.w/2, st=e.st, ph=e.ph||1, ecx=e.x+e.w/2, out={l:false,r:false,jump:false,fire:false};
+  const ns=[{x0:A.left,x1:A.right,top:A.floorY},{x0:A.sx0,x1:A.sx1,top:A.stepY},{x0:A.ux0,x1:A.ux1,top:A.upperY}];
+  const ci=standNode(ns); if(ci>=0) BOT3.arn=ci; const cur=BOT3.arn, v=valves[0];
+  let want=0, sx=ecx-190;
+  if(ph===1){ want=0; sx=ecx-190; }
+  else if(ph===2){ const wu=waves.some(w=>w.y<A.floorY-100&&w.x+w.w>A.ux0-40); if(e.lane==='upper'&&(st==='warn'||st==='attack'||(st==='open'&&wu))){ want=1; sx=(A.sx0+A.sx1)/2; } else { want=2; sx=ecx-170; } }
+  else { if((st==='tired'&&!waves.length)||st==='open'){ want=0; sx=v.x+v.w/2; } else { want=1; sx=(A.sx0+A.sx1)/2; } }
+  if(p.ground&&cur===0&&(ph===1||ph===3)){ for(const b of eballs) if(b.x-hx>=45&&b.x-hx<=95&&Math.abs(b.y-(p.y+30))<50){ out.jump=true; } }
+  if(cur!==want){ const nx=ns[cur<want?cur+1:cur-1]; const h=hopSteer(nx); h.jump=h.jump||out.jump; h.fire=false; return h; }
+  const dx=sx-hx;
+  if(Math.abs(dx)>14){ if(dx>0) out.r=true; else out.l=true; }
+  else if(p.face!==1&&!(ph===3&&st!=='open'&&st!=='tired')) out.r=true;
+  if(st==='open'&&p.face===1&&Math.abs(ecx-hx)<=260) out.fire=true;
+  return out;
 }
 function botWalk(){ const b=enemies.find(e=>e.type==='B'&&e.alive); if(!b||bossDone) return true; const dx=b.x-player.x; return !(dx>0&&dx<380); }
 function botBossJump(){ const b=enemies.find(e=>e.type==='B'&&e.alive); if(!b||b.st!=='dash') return false; const dx=Math.abs(b.x+b.w/2-(player.x+player.w/2)); return player.ground&&dx<190; }
@@ -544,7 +636,8 @@ function drawStarImg(cx,cy,sz,on){ const n=on?'ui_star':'ui_star_off'; if(wOK(n)
 function drawWater(){ if(wOK("w_top")&&wOK("w_deep")){ drawWaterArt(); return; } const y0=H-70; const g=ctx.createLinearGradient(0,y0,0,H); g.addColorStop(0,'#5fc4ff'); g.addColorStop(1,'#2f86e0'); ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(0,H); for(let x=0;x<=W;x+=16) ctx.lineTo(x,y0+Math.sin((x+camX)*0.03+time*2)*5); ctx.lineTo(W,H); ctx.fill(); }
 function drawTiles(){
   const x0=Math.floor(camX/T),x1=Math.ceil((camX+W)/T);
-  for(let ty=0;ty<ROWS;ty++)for(let tx=x0;tx<=x1;tx++){
+  const r0=Math.max(0,Math.floor(camY/T)-2), r1=Math.min(ROWS,Math.ceil((camY+H)/T)+1);
+  for(let ty=r0;ty<r1;ty++)for(let tx=x0;tx<=x1;tx++){
     const c=tile(tx,ty), px=tx*T-camX, py=ty*T;
     if(c==='l'){ if(flies.has(tx+','+ty)) drawFirefly(px+24,py+24); continue; }
     if(c!==' '&&WORLD_OK()&&drawTileArt(c,tx,ty,px,py)) continue;
@@ -671,21 +764,51 @@ function drawZ(e){
   if(e.st==='warn'){ ctx.fillStyle='#ff6b8a'; ctx.font='800 34px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('!',x,y-96); ctx.textAlign='left'; }
   if(e.st==='open'){ ctx.font='800 22px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.lineWidth=5; ctx.strokeStyle='#13206B'; ctx.strokeText('сейчас!',x,y-96); ctx.fillStyle='#ffd23a'; ctx.fillText('сейчас!',x,y-96); ctx.textAlign='left'; }
 }
+function drawT(e){
+  const x=e.x-camX+e.w/2, y=e.y+e.h/2+Math.sin(time*3)*5, st=e.st; let n;
+  if(st==='idle') n=Math.floor(time*3)%2?'cld01':'cld02';
+  else if(st==='warn') n=(e.kind==='ball')?'cld03':'cld02';
+  else if(st==='attack') n=(e.kind==='ball')?'cld05a':'cld05b';
+  else if(st==='tired') n='cld02';
+  else if(st==='open') n='cld07a';
+  else if(st==='react') n='cld07b';
+  else n='cld08';
+  ctx.save(); ctx.translate(x,y); if(st==='warn') ctx.translate(Math.sin(time*40)*3,0); ctx.scale(e.dir<0?1:-1,1);
+  if(cOK(n)){ const m=CMETA[n], k=0.6; ctx.drawImage(CI[n],-m.w*k/2,-m.h*k/2,m.w*k,m.h*k); } else { ctx.fillStyle='#d8b8ff'; ctx.fillRect(-50,-60,100,120); }
+  ctx.restore();
+  if(st==='warn'){ ctx.fillStyle='#ff6b8a'; ctx.font='800 34px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText('!',x,y-84); ctx.textAlign='left'; }
+  if(st==='open'){ ctx.font='800 22px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.lineWidth=5; ctx.strokeStyle='#13206B'; ctx.strokeText('сейчас!',x,y-84); ctx.fillStyle='#ffd23a'; ctx.fillText('сейчас!',x,y-84); ctx.textAlign='left'; }
+}
+function drawWindZones(){
+  if(!LV.wind||!LV.wind.length) return;
+  for(const z of LV.wind){ const on=windOn(z), soon=!on&&windSoon(z); if(!on&&!soon) continue;
+    const cnt=Math.max(3,Math.round(z.w/150)); ctx.save(); ctx.globalAlpha=on?0.85:(0.25+0.15*Math.sin(time*10));
+    for(let i=0;i<cnt;i++){ const span=z.w+160, ph=((time*130*z.dir+i*span/cnt)%span+span)%span, x=z.x+ph-80-camX, y=z.y+((i*89)%Math.max(60,z.h-70))+20, n=((Math.floor(time*6)+i)%2)?'wind1':'wind2';
+      if(x<-140||x>W+140) continue;
+      if(cOK(n)){ ctx.save(); ctx.translate(x+63,y+29); ctx.scale(z.dir>0?1:-1,1); ctx.drawImage(CI[n],-63,-29,126,59); ctx.restore(); } else { ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillRect(x,y,100,6); } }
+    ctx.restore(); }
+}
+function drawLighthouse(){ if(LEVEL!==3||!LV.arena) return; const A=LV.arena, n=bossDone?'lh2':'lh1'; if(!cOK(n)) return; const m=CMETA[n], k=1.15; ctx.drawImage(CI[n],A.lhX-camX-m.w*k/2,A.floorY-m.h*k+8,m.w*k,m.h*k); }
 function drawValves(){
-  const z=enemies.find(e=>e.type==='Z'&&e.alive);
-  for(const v of valves){ const x=v.x-camX, active=z&&(z.st==='tired'||z.st==='open')&&z.valve===v.idx, pressed=z&&z.st==='open'&&z.valve===v.idx; const n=pressed?'valve2':'valve1';
+  const z=enemies.find(e=>e.type==='Z'&&e.alive), tb=enemies.find(e=>e.type==='T'&&e.alive), isT=LEVEL===3;
+  for(const v of valves){ const x=v.x-camX, active=isT?(tb&&(tb.st==='tired'||tb.st==='open')):(z&&(z.st==='tired'||z.st==='open')&&z.valve===v.idx), pressed=isT?(tb&&tb.st==='open'):(z&&z.st==='open'&&z.valve===v.idx); const n=isT?(pressed?'mirror2':'mirror1'):(pressed?'valve2':'valve1');
     if(active){ const g=ctx.createRadialGradient(x+v.w/2,v.y-20,6,x+v.w/2,v.y-20,70); g.addColorStop(0,'rgba(255,240,120,'+(0.55+0.25*Math.sin(time*8))+')'); g.addColorStop(1,'rgba(255,240,120,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x+v.w/2,v.y-20,70,0,7); ctx.fill(); }
-    if(cOK(n)){ const m=CMETA[n], k=v.w/m.w*1.05, w=m.w*k, hh=m.h*k; ctx.drawImage(CI[n],x+v.w/2-w/2,v.y-hh+6,w,hh); } else { ctx.fillStyle='#d94a4a'; ctx.fillRect(x,v.y-30,v.w,30); } }
+    if(cOK(n)){ const m=CMETA[n], k=v.w/m.w*1.05*(isT?1.7:1), w=m.w*k, hh=m.h*k; ctx.drawImage(CI[n],x+v.w/2-w/2,v.y-hh+6,w,hh); } else { ctx.fillStyle='#d94a4a'; ctx.fillRect(x,v.y-30,v.w,30); } }
 }
 function drawWaves(){
   const z=enemies.find(e=>e.type==='Z'&&e.alive);
   if(z&&z.st==='warn'){ const fy=LV.arena.floorY, a=0.25+0.2*Math.sin(time*14); ctx.fillStyle='rgba(120,200,255,'+a+')'; ctx.fillRect(LV.arena.left-camX,fy-46,z.x-LV.arena.left+z.w/2,46); }
+  const tw=enemies.find(e=>e.type==='T'&&e.alive&&e.act);
+  if(tw&&tw.st==='warn'){ const A=LV.arena, a=0.22+0.18*Math.sin(time*14), len=tw.x-A.left+tw.w/2;
+    if(tw.kind==='ball'){ ctx.fillStyle='rgba(190,140,255,'+a+')'; ctx.fillRect(A.left-camX,A.floorY-52,len,28); }
+    else { const y=(tw.lane==='upper'?A.upperY:A.floorY)-46; ctx.fillStyle='rgba(150,210,255,'+a+')'; ctx.fillRect(A.left-camX,y,len,46); ctx.fillStyle='rgba(255,255,255,.9)'; ctx.font='800 26px Nunito,system-ui,sans-serif'; ctx.fillText('◀ ◀ ◀',A.left-camX+30,y+34); } }
   for(const w of waves){ const x=w.x-camX, n=Math.floor(time*8)%2?'wind1':'wind2'; if(cOK(n)){ const m=CMETA[n]; ctx.globalAlpha=0.95; ctx.drawImage(CI[n],x,w.y-14,w.w,w.h+22); ctx.globalAlpha=1; } else { ctx.fillStyle='rgba(120,200,255,.8)'; ctx.fillRect(x,w.y,w.w,w.h); } }
 }
 function drawEnemiesCombat(){
   for(const e of enemies){ const x=e.x-camX; if(x<-140||x>W+140) continue;
     if(e.type==='B'){ if(e.alive) drawBoss(e); continue; }
     if(e.type==='Z'){ if(e.alive&&e.act) drawZ(e); else if(e.alive) drawZ(e); continue; }
+    if(e.type==='T'){ if(e.alive) drawT(e); continue; }
     if(e.type==='d'){ if(e.alive) drawDragon(e); continue; }
     const cx=x+e.w/2, base=e.y+e.h+3;
     if(!e.alive){ if(e.t<0.5&&wOK('snail_squint')){ const im=WI.snail_squint, w=im.naturalWidth*0.42, hh=im.naturalHeight*0.42; ctx.globalAlpha=Math.max(0,1-e.t/0.5); ctx.drawImage(im,cx-w/2,base-hh-e.t*30,w,hh); ctx.globalAlpha=1; } continue; }
@@ -709,7 +832,7 @@ function drawShots(){
 }
 function heartPath(x,y,s){ ctx.beginPath(); ctx.moveTo(x,y+s*0.9); ctx.bezierCurveTo(x-s*1.5,y-s*0.3,x-s*0.5,y-s*1.2,x,y-s*0.35); ctx.bezierCurveTo(x+s*0.5,y-s*1.2,x+s*1.5,y-s*0.3,x,y+s*0.9); ctx.fill(); }
 function drawCombatHUD(){
-  { const bo=enemies.find(e=>e.type==='B'||e.type==='Z'); if(bo&&(bo.alive||bossHits>0)&&Math.abs(player.x-bo.x)<1000&&!bossDone){ ctx.fillStyle='rgba(255,255,255,.75)'; rr(W/2-120,18,240,40,20); ctx.fill(); ctx.fillStyle='#13206B'; ctx.font='800 16px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText(bo.name||'Хранитель',W/2-52,44); ctx.textAlign='left'; for(let i=0;i<3;i++){ ctx.fillStyle=i<bossHits?'#ffd23a':'rgba(200,205,225,.9)'; ctx.beginPath(); ctx.arc(W/2+30+i*30,38,10,0,7); ctx.fill(); ctx.strokeStyle='rgba(19,32,107,.4)'; ctx.lineWidth=2; ctx.stroke(); } } }
+  { const bo=enemies.find(e=>e.type==='B'||e.type==='Z'||e.type==='T'); if(bo&&(bo.alive||bossHits>0)&&Math.abs(player.x-bo.x)<1000&&!bossDone){ const N=(bo.type==='T')?6:3, bw=(N===6)?300:240; ctx.fillStyle='rgba(255,255,255,.75)'; rr(W/2-bw/2,18,bw,40,20); ctx.fill(); ctx.fillStyle='#13206B'; ctx.font='800 16px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText(bo.name||'Хранитель',W/2-(N===6?84:52),44); ctx.textAlign='left'; for(let i=0;i<N;i++){ const gx=(N===6)?(W/2-8+i*24+(i>=2?6:0)+(i>=4?6:0)):(W/2+30+i*30); ctx.fillStyle=i<bossHits?'#ffd23a':'rgba(200,205,225,.9)'; ctx.beginPath(); ctx.arc(gx,38,N===6?9:10,0,7); ctx.fill(); ctx.strokeStyle='rgba(19,32,107,.4)'; ctx.lineWidth=2; ctx.stroke(); } } }
   for(let i=0;i<3;i++){ if(!drawHeartHud(i)){ ctx.fillStyle=i<hp?'#ff6fa3':'rgba(200,205,225,.8)'; heartPath(34+i*34,86,13); } }
   ctx.font='700 15px Nunito,system-ui,sans-serif'; ctx.fillStyle='#13206B';
   for(let i=0;i<3;i++){ const got=i<flyTotal-flies.size; if(!drawFireflyHud(i,got)){ ctx.fillStyle=got?'#c8e34a':'rgba(255,255,255,.65)'; ctx.beginPath(); ctx.arc(150+i*30,84,10,0,7); ctx.fill(); ctx.strokeStyle='rgba(19,32,107,.4)'; ctx.lineWidth=2; ctx.stroke(); } }
@@ -717,7 +840,7 @@ function drawCombatHUD(){
   if(toastT>0){ ctx.globalAlpha=Math.min(1,toastT*2); ctx.font='800 24px Nunito,system-ui,sans-serif'; const w=ctx.measureText(toastText).width+40; ctx.fillStyle='rgba(19,32,107,.78)'; rr(W/2-w/2,66,w,44,22); ctx.fill(); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(toastText,W/2,96); ctx.textAlign='left'; ctx.globalAlpha=1; }
 }
 function drawEnemies(){
-  drawValves(); drawWaves(); drawEnemiesCombat(); drawPrism(); return;
+  drawLighthouse(); drawWindZones(); drawValves(); drawWaves(); drawEnemiesCombat(); drawPrism(); return;
   if(wOK('snail_1')&&wOK('snail_squint')){
     for(const e of enemies){ const x=e.x-camX; if(x<-90||x>W+90)continue;
       const cx=x+e.w/2, base=e.y+e.h+3;
@@ -794,7 +917,7 @@ function drawHUD(){
   if(wOK('ui_sun')){ ctx.drawImage(WI.ui_sun,24,16,44,44); } else { ctx.fillStyle='#ffd23a'; ctx.beginPath(); ctx.arc(46,39,15,0,7); ctx.fill(); ctx.fillStyle='#ffb300'; ctx.beginPath(); ctx.arc(46,39,8,0,7); ctx.fill(); }
   ctx.fillStyle='#13206B'; ctx.font='800 26px Nunito,system-ui,sans-serif'; ctx.textAlign='left'; ctx.fillText(got+' / '+sunTotal,72,48);
   // прогресс пути
-  const pr=Math.min(1,player.x/(finishX*T)); ctx.fillStyle='rgba(255,255,255,.6)'; rr(W/2-160,22,320,12,6); ctx.fill(); ctx.fillStyle='#5cc24a'; rr(W/2-160,22,Math.max(12,320*pr),12,6); ctx.fill();
+  const pr=(LEVEL===3&&LV.arena)?Math.max(0,Math.min(1,(LV.arena.startY-player.y)/(LV.arena.startY-LV.arena.floorY))):Math.min(1,player.x/(finishX*T)); ctx.fillStyle='rgba(255,255,255,.6)'; rr(W/2-160,22,320,12,6); ctx.fill(); ctx.fillStyle='#5cc24a'; rr(W/2-160,22,Math.max(12,320*pr),12,6); ctx.fill();
   drawCombatHUD();
   if(fade>0){ ctx.fillStyle='rgba(255,255,255,'+fade*.8+')'; ctx.fillRect(0,0,W,H); }
 }
@@ -830,7 +953,7 @@ function drawMenu(){
     }
     ctx.fillStyle='#13206B'; ctx.font='800 26px Nunito,system-ui,sans-serif'; ctx.fillText(CHARS[k].name,cx,440);
     bounds[k]=[cx-100,250,200,200]; i++; }
-  const NAMES=['Луг','Ручей','Облака'];
+  const NAMES=['Луг','Ручей','Маяк'];
   for(let n=1;n<=3;n++){ const bx=W/2-300+(n-1)*205, by=470, bb=save.best['v'+n];
     ctx.fillStyle='#1F6BFF'; rr(bx,by,190,96,24); ctx.fill(); if(wOK('ui_btn_blue')) ctx.drawImage(WI.ui_btn_blue,bx-2,by-4,194,104);
     ctx.fillStyle='#fff'; ctx.font='800 26px Nunito,system-ui,sans-serif'; ctx.fillText(n+'. '+NAMES[n-1],bx+95,by+38);
@@ -874,13 +997,22 @@ function computeHint(){
   if(state!=='play') return {text:'',btns:[]};
   const t=touchMode(), FIRE=t?'✦':'J', JUMP=t?'⬆':'Пробел';
   if(prism&&!bossDone) return {text:'Призма! Подойди и забери её',btns:[]};
-  const bo=enemies.find(e=>e.alive&&!bossDone&&(e.type==='B'||(e.type==='Z'&&e.act))&&Math.abs(player.x-e.x)<900);
+  const bo=enemies.find(e=>e.alive&&!bossDone&&(e.type==='B'||(e.type==='Z'&&e.act)||(e.type==='T'&&e.act))&&Math.abs(player.x-e.x)<1100);
   if(bo&&bo.type==='B'){
     if(bo.st==='closed') return {text:'Раковина закрыта. Подожди — Хранитель скоро откроется',btns:[]};
     if(bo.st==='warn') return {text:'Хранитель разгоняется! Отойди или прыгни: '+JUMP,btns:['bj']};
     if(bo.st==='dash') return {text:'Перепрыгни его! Нажми '+JUMP,btns:['bj']};
     if(bo.st==='window') return {text:'Открылся! Нажми '+FIRE+' (выстрел) или прыгни ему на голову '+JUMP,btns:['bf','bj']};
     if(bo.st==='react') return {text:'Попал! Так держать',btns:[]};
+  }
+  if(bo&&bo.type==='T'){ const ph=bo.ph||1;
+    if(bo.st==='idle') return {text:ph===2?'Поднимись на верхнюю площадку — оттуда достанешь':'Тучегон готовится. Держись на расстоянии',btns:[]};
+    if(bo.st==='warn'){ if(bo.kind==='ball') return {text:'Летит шар! Перепрыгни его: '+JUMP,btns:['bj']}; return {text:bo.lane==='upper'?'Порыв по ВЕРХНЕЙ дорожке! Спрыгни на ступеньку':'Порыв по земле! Встань на высокую площадку: '+JUMP,btns:['bj']}; }
+    if(bo.st==='attack') return {text:bo.kind==='ball'?'Перепрыгни шар! '+JUMP:'Пережди порыв на безопасной дорожке',btns:bo.kind==='ball'?['bj']:[]};
+    if(bo.st==='tired') return {text:'Встань на ЗЕРКАЛО внизу — оно светится!',btns:[]};
+    if(bo.st==='open') return {text:ph===3?'Ядро открыто! Нажми '+FIRE+' — стреляй':'Брошь светится! Нажми '+FIRE+(ph===2?' с верхней площадки':''),btns:['bf']};
+    if(bo.st==='react') return {text:'Попал! Так держать',btns:[]};
+    if(bo.st==='phase') return {text:'Тучегон меняет приём! Приготовься',btns:[]};
   }
   if(bo&&bo.type==='Z'){
     if(bo.st==='idle') return {text:'Дракон в пузыре — выстрелы пока не помогут. Жди',btns:[]};
@@ -983,7 +1115,7 @@ document.addEventListener('contextmenu',e=>e.preventDefault());
     step({left:botDir()[0],right:botDir()[1],jump:j||(!p.ground&&p.vy<0),jumpDown:j,fire:botFire()});
   }
   { const tp=/tp=([0-9]+),([0-9]+)/.exec(location.search); if(tp){ player.x=+tp[1]; player.y=+tp[2]; player.vy=0; player.ground=true; camX=Math.max(0,player.x-W*0.4); camY=Math.max(0,Math.min(WH-H,player.y+30-H*0.58)); } }
-  { const bm=/boss=([a-z]+)/.exec(location.search); if(bm){ const b=enemies.find(e=>e.type==='B'||e.type==='Z'); if(b.type==='Z'){ b.act=true; const vv=valves[0]; player.x=vv.x+10; player.y=vv.y-61; b.valve=+(/valve=([0-9])/.exec(location.search)||[0,0])[1]; const v2=valves[b.valve]; if(v2){ player.x=v2.x+10; player.y=v2.y-61; b.tx=v2.x+v2.w/2+190-b.w/2; b.ty=v2.y-85-b.h/2; b.x=b.tx; b.y=b.ty; } } else { player.x=b.x-300; player.y=12*T-60-1; } player.vy=0; player.ground=true; camX=Math.max(0,player.x-W*0.4); camY=Math.max(0,Math.min(WH-H,player.y+30-H*0.58)); b.st=bm[1]; b.stT=2; b.dir=-1; if(/hits=([0-9])/.test(location.search)) bossHits=+/hits=([0-9])/.exec(location.search)[1]; } }
+  { const bm=/boss=([a-z]+)/.exec(location.search); if(bm){ const b=enemies.find(e=>e.type==='B'||e.type==='Z'||e.type==='T'); if(b.type==='T'){ const A=LV.arena; player.x=A.left+6*T; player.y=A.floorY-61; b.act=true; b.kind=/kind=gust/.test(location.search)?'gust':'ball'; b.lane=/lane=upper/.test(location.search)?'upper':'ground'; } else if(b.type==='Z'){ b.act=true; const vv=valves[0]; player.x=vv.x+10; player.y=vv.y-61; b.valve=+(/valve=([0-9])/.exec(location.search)||[0,0])[1]; const v2=valves[b.valve]; if(v2){ player.x=v2.x+10; player.y=v2.y-61; b.tx=v2.x+v2.w/2+190-b.w/2; b.ty=v2.y-85-b.h/2; b.x=b.tx; b.y=b.ty; } } else { player.x=b.x-300; player.y=12*T-60-1; } player.vy=0; player.ground=true; camX=Math.max(0,player.x-W*0.4); camY=Math.max(0,Math.min(WH-H,player.y+30-H*0.58)); b.st=bm[1]; b.stT=2; b.dir=-1; if(/hits=([0-9])/.test(location.search)) bossHits=+/hits=([0-9])/.exec(location.search)[1]; } }
   { const cm=/char=(vika|kirill)/.exec(location.search); if(cm) save.char=cm[1]; if(/fire=1/.test(location.search)){ shootCd=0; tryFire(); for(let i=0;i<7;i++) step({left:/run=1/.test(location.search),right:/run=1/.test(location.search),jump:false,jumpDown:false}); } if(/hurt=1/.test(location.search)){ hurtT=0; player.inv=0; hurt('t',player.x+100); step({left:false,right:false,jump:false,jumpDown:false}); } }
   if(/pause/.test(location.search)) state='play';
 })();
@@ -995,7 +1127,7 @@ function botTick(){
   const tileFloor=fl(tx,feetRow+1)||fl(Math.floor((p.x+p.w+8)/T),feetRow+1);
   const floorAhead=tileFloor||moverUnder(p.x+p.w+30)||moverUnder(p.x+p.w+8);
   const wall=isSolid(tx,feetRow)||isSolid(tx,feetRow-1), thorn=tile(tx,feetRow)==='s'||tile(tx+1,feetRow)==='s';
-  const sn=enemies.some(e=>e.alive&&e.type!=='B'&&e.type!=='Z'&&e.x>p.x&&e.x-p.x<130&&Math.abs(e.y-p.y)<80);
+  const sn=enemies.some(e=>e.alive&&e.type!=='B'&&e.type!=='Z'&&e.type!=='T'&&e.x>p.x&&e.x-p.x<130&&Math.abs(e.y-p.y)<80);
   const platAbove=(isOneWay(tx,feetRow-2)||isOneWay(tx+1,feetRow-2)||isOneWay(tx,feetRow-3))&&p.ground;
   const sameLevel=[1,2,3,4].some(d=>fl(tx+d,feetRow+1)), lowFloor=[1].some(d=>[2,3,4,5,6,7].some(r=>fl(tx+d,feetRow+1+r)));
   let needGapJump=!floorAhead&&!(lowFloor&&!sameLevel);
@@ -1006,7 +1138,7 @@ function botTick(){
   if(p.rider&&!floorAhead){ let dist=null; for(let c=tx;c<=tx+9;c++){ if(fl(c,feetRow+1)&&c*T>p.x+p.w){ dist=c*T-(p.x+p.w); break; } } if(dist!==null&&dist<=160) needGapJump=true; else { needGapJump=false; holdR=true; } }
   // боссы и призма
   const prismMode=prism&&!bossDone;
-  const zc=botZ();
+  const zc=botZ()||botL3();
   if(prismMode){ const dp=prism.x-(p.x+17); l=dp<-20; r=dp>20; }
   else if(zc){ l=zc.l; r=zc.r; if(zc.jump){ jump=true; jd=true; } fire=zc.fire; }
   else { const bd=botDir(); l=bd[0]; r=bd[1]; }
@@ -1039,11 +1171,11 @@ if(/selftest/.test(location.search)){
   function runBot(){
     state='play'; resetLevel(); deathLog.length=0; let steps=0, deaths=0, lastCheck=checkpoint.tx;
     const origResp=respawn;
-    while(state==='play'&&steps<60*240){
+    while(state==='play'&&steps<60*(LEVEL===3?600:240)){
       const bi=botTick(); if(LEVEL===2&&steps%5===0&&player.x>2250&&deathLog.length>=2&&trace.length<60) trace.push(Math.round(player.x)+','+Math.round(player.y)+(player.ground?'G':'a')+(bi.l?'L':'')+(bi.r?'R':'')+(bi.hold?'J':'')); step({left:bi.l,right:bi.r,jump:bi.hold,jumpDown:bi.jd,fire:botFire()||bi.fire});
       steps++;
     }
-    return {done:state==='done',steps,secs:(steps/60).toFixed(1),got:sunTotal-suns.size,total:sunTotal,x:Math.round(player.x),bh:bossHits,bd:bossDone,pr:prism?[Math.round(prism.x),Math.round(prism.y)]:0,b0:enemies.filter(e=>e.type==='B').map(e=>[Math.round(e.x),e.st,e.alive])};
+    return {done:state==='done',steps,secs:(steps/60).toFixed(1),got:sunTotal-suns.size,total:sunTotal,x:Math.round(player.x),bh:bossHits,bd:bossDone,pr:prism?[Math.round(prism.x),Math.round(prism.y)]:0,b0:enemies.filter(e=>e.type==='B').map(e=>[Math.round(e.x),e.st,e.alive]),y:Math.round(player.y),cur:BOT3.cur,arn:BOT3.arn,T:enemies.filter(e=>e.type==='T').map(e=>[e.st,e.ph,Math.round(e.x),e.alive])};
   }
   log('trace='+'');for(const L of [1,2,3]){ LEVEL=L; STAT.hurt=0;STAT.shots=0;STAT.hits=0; const r=runBot(); log('L'+L+' hurt='+STAT.hurt+' shots='+STAT.shots+' hits='+STAT.hits+' fx='+finishX+' tF='+tile(finishX,11)+' py='+Math.round(player.y)+' hp='+hp+' '+JSON.stringify(r)+' deaths='+deathLog.slice(0,6).join(';')+' n='+deathLog.length); } log('trace='+trace.slice(0,40).join(' '));
   // --- тест плаща: один заряд на участок, двойное касание, бесплатный повтор, закрытие на новом цветке, выстрел снимает плащ ---

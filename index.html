@@ -75,10 +75,10 @@ let W=1280; const H=720,T=48;               // экран и размер тай
 let ROWS=15, WH=720, camY=0; const movers=[]; let valves=[], waves=[];
 // ---------- Уровень (строится кодом, проверяется ботом) ----------
 function buildLevel(n){
-  ROWS=(n===3)?60:(n===2)?32:15; WH=ROWS*T; const mv=[]; let arena=null; const path=[], wind=[];
-  const COLS=(n===3)?100:(n===2)?131:150, g=[...Array(ROWS)].map(()=>Array(COLS).fill(' '));
+  ROWS=(n===3)?116:(n===2)?32:15; WH=ROWS*T; const mv=[]; let arena=null; const path=[], wind=[];
+  const COLS=(n===3)?100:(n===2)?402:(n===1)?691:150, g=[...Array(ROWS)].map(()=>Array(COLS).fill(' '));
   const set=(x,y,ch)=>{ if(x>=0&&x<COLS&&y>=0&&y<ROWS) g[y][x]=ch; };
-  const ground=(a,b,top=12)=>{ for(let x=a;x<=b;x++) for(let y=top;y<ROWS;y++) set(x,y,'#'); };
+  const ground=(a,b,top=12,bot=ROWS-1)=>{ for(let x=a;x<=b;x++) for(let y=top;y<=bot;y++) set(x,y,'#'); };
   const mover=(x,y,tiles,range,speed)=>mv.push({x:x*T,y:y*T,w:tiles*T,range:range*T,speed});
   const block=(x,y,w,h)=>{ for(let i=0;i<w;i++) for(let j=0;j<h;j++) set(x+i,y+j,'#'); };
   const plat=(x,y,n)=>{ for(let i=0;i<n;i++) set(x+i,y,'='); };
@@ -101,8 +101,19 @@ function buildLevel(n){
   set(98,11,'c');
   // Зона 4: облачные ступени и финиш
   plat(101,10,3); plat(106,8,3); plat(111,10,3); plat(116,8,3); suns(101,9,3); suns(106,7,3); suns(111,9,3); suns(116,7,3);
-  ground(120,149); set(124,11,'n'); suns(121,10,3); set(129,11,'c'); suns(133,10,4); set(141,11,'B');
-  set(148,11,'F');
+  // удлинение: зоны A–F собраны из уже проверенных кусков (ручей, холмы, облачные ступени)
+  const segA=x=>{ ground(x,x+2); plat(x+4,10,3); plat(x+8,9,4); plat(x+13,10,3); suns(x+4,9,3); suns(x+8,8,4); suns(x+13,9,3);
+    ground(x+16,x+35); set(x+20,11,'n'); suns(x+18,10,3); block(x+26,10,2,2); suns(x+26,9,2); thorn(x+34,1); set(x+31,11,'c'); };
+  const segB=x=>{ ground(x,x+22); block(x+4,10,4,2); suns(x+4,9,4); plat(x+10,8,3); suns(x+10,7,3); set(x+10,11,'n'); thorn(x+19,2); suns(x+17,9,3); set(x+22,11,'c'); };
+  const segC=x=>{ for(let k=0;k<6;k++){ const px=x+2+5*k, py=(k%2===0)?10:8; plat(px,py,3); suns(px,py-1,3); } };
+  const segD=x=>{ ground(x,x+31); set(x+6,11,'n'); thorn(x+10,2); set(x+14,11,'r'); set(x+18,8,'d'); set(x+23,11,'n'); suns(x+3,10,3); suns(x+20,9,2); set(x+28,11,'c'); };
+  const segE=x=>{ ground(x,x+27); thorn(x+5,2); thorn(x+12,3); thorn(x+20,2); suns(x+4,9,4); suns(x+11,8,5); suns(x+19,9,4); set(x+16,8,'d'); set(x+25,11,'c'); };
+  const segF=x=>{ for(let k=0;k<4;k++){ ground(x+10*k,x+10*k+(k===3?5:6)); suns(x+10*k+1,10,3); if(k<3) suns(x+10*k+7,8,3); } set(x+11,11,'c'); set(x+31,11,'c'); };
+  segA(120); segB(156); segC(179); segD(210); segE(242); segF(270); segB(306); segD(329);
+  segA(361); segE(397); segC(425); segD(456); segB(488); segF(511); segE(547); segB(575); segC(598); segD(629);
+  const ar1=661;
+  ground(ar1,ar1+29); set(ar1+4,11,'n'); suns(ar1+1,10,3); set(ar1+9,11,'c'); suns(ar1+13,10,4); set(ar1+21,11,'B');
+  set(ar1+28,11,'F');
   set(72,11,'r'); set(28,6,'l'); set(87,6,'l'); set(117,6,'l');
   } else if(n===2){
   // Уровень 2 «Ручей и водяная башня» (32 ряда): переправа на облаках, сад дракончиков, подъём ступенями, арена Ручейника
@@ -111,14 +122,25 @@ function buildLevel(n){
   mover(13,G,4,5,60); mover(27,G,4,5,60);
   ground(23,26,G); put(24,G-1,'c'); suns(15,G-3,3); suns(30,G-3,4); put(30,G-4,'l');
   ground(37,60,G); put(40,G-1,'c'); suns(41,G-1,4); put(44,G-4,'d'); put(48,G-1,'n'); put(52,G-5,'d'); put(55,G-1,'r'); suns(46,G-3,3); suns(57,G-2,3);
-  for(let k=0;k<9;k++){ const x=62+4*k, y=G-2-2*k; plat(x,y,3); if(k===2||k===5){ put(x+2,y-1,'c'); suns(x,y-1,2); } else suns(x,y-1,3); }
-  put(68,G-8,'d'); put(84,G-14,'d'); put(70,G-12,'l');
-  ground(98,127,AR); put(100,AR-1,'c');
-  plat(102,AR-2,5); plat(111,AR-2,5); plat(120,AR-2,5);
-  put(104,AR-3,'V'); put(113,AR-3,'V'); put(122,AR-3,'V');
-  suns(103,AR-4,3); suns(112,AR-4,3); suns(121,AR-4,3); suns(107,AR-1,3); suns(116,AR-1,3); put(123,4,'l');
-  put(125,AR-7,'Z'); put(126,AR-1,'F');
-  arena={floorY:AR*T,left:98*T,right:128*T};
+  // удлинение: переправа → сад → переправа → сад (по образцу участка 0–60), затем лестница на парящий мост и вторая лестница
+  const cross=e=>{ mover(e+1,G,4,5,60); ground(e+11,e+14,G); put(e+12,G-1,'c'); suns(e+3,G-3,3); suns(e+18,G-3,4); mover(e+15,G,4,5,60); };
+  const garden=x=>{ ground(x,x+23,G); put(x+3,G-1,'c'); suns(x+4,G-1,4); put(x+7,G-4,'d'); put(x+11,G-1,'n'); put(x+15,G-5,'d'); put(x+18,G-1,'r'); suns(x+9,G-3,3); suns(x+20,G-2,3); };
+  cross(60); garden(85); cross(108); garden(133); cross(156); garden(181); cross(204); garden(229); cross(252); garden(277);
+  const s0=302;   // начало первой лестницы (конец сада 300 + 2)
+  for(let k=0;k<5;k++){ const x=s0+4*k, y=G-2-2*k; plat(x,y,3); if(k===2){ put(x+2,y-1,'c'); suns(x,y-1,2); } else suns(x,y-1,3); }
+  put(s0+6,G-8,'d'); put(s0+14,G-12,'d');
+  const R=17, pl=s0+20;   // парящий мост: длинное облако на высоте 17
+  plat(pl,R,36); suns(pl+2,R-1,6); put(pl+4,R-1,'c'); put(pl+10,R-4,'d'); put(pl+16,R-1,'s'); put(pl+17,R-1,'s'); suns(pl+19,R-1,4); put(pl+14,R-3,'l'); put(pl+22,R-4,'d');
+  put(pl+25,R-1,'s'); put(pl+26,R-1,'s'); suns(pl+28,R-1,3); put(pl+29,R-4,'d'); put(pl+33,R-1,'c');
+  const s2=pl+37;
+  plat(s2,15,3); suns(s2,14,3); plat(s2+4,13,3); put(s2+6,12,'c'); suns(s2+4,12,2); plat(s2+8,11,3); suns(s2+8,10,3);
+  const a0=s2+12;   // арена Ручейника
+  ground(a0,a0+29,AR); put(a0+2,AR-1,'c');
+  plat(a0+4,AR-2,5); plat(a0+13,AR-2,5); plat(a0+22,AR-2,5);
+  put(a0+6,AR-3,'V'); put(a0+15,AR-3,'V'); put(a0+24,AR-3,'V');
+  suns(a0+5,AR-4,3); suns(a0+14,AR-4,3); suns(a0+23,AR-4,3); suns(a0+9,AR-1,3); suns(a0+18,AR-1,3); put(a0+25,4,'l');
+  put(a0+27,AR-7,'Z'); put(a0+28,AR-1,'F');
+  arena={floorY:AR*T,left:a0*T,right:(a0+30)*T};
   set(2,G-1,'P');
   } else {
   // Уровень 3 «Подъём к солнечному маяку» (60 рядов): облачный сад, башня, воздушный мост, ветер, арена Тучегона
@@ -126,7 +148,30 @@ function buildLevel(n){
   const node=(x,row,len,o)=>path.push(Object.assign({x0:x*T,x1:(x+len)*T,top:row*T},o||{}));
   const P=(x,row,len,o)=>{ plat(x,row,len); suns(x,row-1,len); node(x,row,len,o); };
   const wz=(x,y,w,h,dir,period,onT,ph)=>wind.push({x:x*T,y:y*T,w:w*T,h:h*T,dir,period,onT,ph});
-  ground(0,14,G3); node(0,G3,15); suns(3,G3-1,5); suns(9,G3-1,4);
+  // нижняя часть (новая): старт у самого низа
+  const Rb=ROWS-3; let kq=0;
+  const Q=(x,row,len,o)=>{ plat(x,row,len); if((kq++%2)===0) suns(x,row-1,len); node(x,row,len,o); };
+  ground(0,14,Rb); node(0,Rb,15); set(2,Rb-1,'P'); suns(5,Rb-1,5);
+  Q(16,111,3); Q(20,109,3); Q(24,107,3); put(26,106,'c'); Q(28,105,3); Q(32,103,3); Q(36,101,3); put(32,107,'d');
+  // четыре длинных моста змейкой (вправо, влево, вправо, влево), у каждого свой ветер и свои дракончики
+  const bridge=(row,x0,dir,cnt)=>{ for(let i=0;i<cnt;i++) Q(x0+dir*6*i,row,4); };
+  bridge(99,40,1,9); put(59,98,'c'); put(73,97,'d');
+  wz(40,92,52,9,1,6,2.4,0); wz(40,92,52,9,-1,6,2.4,3);
+  Q(93,97,3); Q(89,95,3);
+  bridge(95,83,-1,10); put(54,94,'c'); put(65,92,'d');
+  wz(29,88,62,9,1,7,2.5,0); wz(29,88,62,9,-1,7,2.5,3.5);
+  Q(25,93,3);
+  bridge(91,29,1,11); put(60,90,'c'); put(47,88,'d');
+  wz(29,84,64,9,1,5.5,2.2,0); wz(29,84,64,9,-1,5.5,2.2,2.75);
+  Q(94,89,3);
+  bridge(87,89,-1,11); put(60,86,'c'); put(75,84,'d');
+  wz(29,80,64,9,1,8,3,0); wz(29,80,64,9,-1,8,3,4);
+  Q(25,85,3);
+  Q(21,83,3,{sp:23.5*T}); put(23,82,'^'); Q(25,78,3,{sp:25.5*T}); put(25,77,'^'); Q(21,73,3,{sp:23.5*T}); put(23,72,'^');
+  Q(25,68,3,{sp:25.5*T}); put(25,67,'^'); Q(21,63,3,{sp:23.5*T}); put(23,62,'^'); put(30,70,'d');
+  Q(25,58,3); Q(21,58,3); put(22,57,'c'); Q(17,58,3);
+  // верхняя часть (прежний уровень 3): площадка-привал
+  ground(0,14,G3,G3+2); node(0,G3,15); suns(3,G3-1,5); suns(9,G3-1,4); put(12,G3-1,'c');
   // облачный сад и нижняя башня (зигзаг)
   P(16,55,3); P(20,53,3); P(24,51,3); put(26,50,'c');
   P(20,49,3); P(16,47,3); P(12,45,3); put(13,44,'c');
@@ -145,7 +190,7 @@ function buildLevel(n){
   block(74,AR,23,2); node(74,AR,23); block(97,0,2,12);
   put(75,AR-1,'c'); put(77,AR-1,'V'); put(92,AR-1,'F'); put(94,3,'T');
   plat(80,8,3); suns(80,7,3); plat(84,6,8); suns(84,5,8);
-  arena={floorY:AR*T,left:74*T,right:97*T,upperY:6*T,stepY:8*T,sx0:80*T,sx1:83*T,ux0:84*T,ux1:92*T,startY:G3*T,
+  arena={floorY:AR*T,left:74*T,right:97*T,upperY:6*T,stepY:8*T,sx0:80*T,sx1:83*T,ux0:84*T,ux1:92*T,startY:Rb*T,
          home1:{x:93*T,y:AR*T-145},home2:{x:93*T,y:AR*T-310},prismX:86*T,lhX:95.5*T};
   // ветер: сад (всегда, попутный), мост и верхняя башня (по таймеру, попеременно)
   wz(4,51,10,6,1,0,0,0);
@@ -153,7 +198,7 @@ function buildLevel(n){
   wz(47,21,14,14,-1,7,2.6,0); wz(47,21,14,14,1,7,2.6,3.5);
   }
   // старт
-  if(n===1) set(2,11,'P'); if(n===3) set(2,56,'P');
+  if(n===1) set(2,11,'P');
   return {g,COLS,rows:ROWS,movers:mv,arena,path,wind};
 }
 let LEVEL=1; let LV=buildLevel(1); let finishX=144;

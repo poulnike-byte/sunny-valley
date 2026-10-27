@@ -271,6 +271,7 @@ let bossHits=0, bossDone=false, prism=null;
 let hp=3, maxHp=3, fx=[], shots=[], eballs=[], shootCd=0, shootT=0, capeT=0, capeGranted=-9, capeUseAt=-9, hurtT=0, toastText='', toastT=0, flies=new Set(), flyTotal=0;
 const STAT={hurt:0,shots:0,hits:0,flies:0,by:{}}; window.__stat=STAT;
 // этап 15: Луми, Хмурик, сюжетные вставки, счётчики возвратов
+let lumiPend=null, lumiShown=9;   // очередь реплик Луми
 let cpDeaths={}, lumi={x:0,y:0,a:0,say:'',sayT:0,alert:0}, cameo=[], storyQ=null, storyI=0, storyDone=null, storyT0=0; const lumiSeen={};
 const NOSTORY=/nostory/.test(location.search);
 let qa=new Set(), quest={given:false,have:0,total:0,rewarded:false};   // квест Тимки: золотые жёлуди
@@ -316,7 +317,7 @@ function resetLevel(){
   checkpoint={x:sx*T+6,y:sy*T-24,tx:sx};
   player={x:checkpoint.x,y:checkpoint.y,w:34,h:60,vx:0,vy:0,ground:false,coyote:0,buf:0,face:1,sq:0,anim:0,jumpHeld:false,inv:0};
   camX=0; time=0; fade=0; startTime=performance.now(); finishInfo=null; camY=Math.max(0,Math.min(WH-H,player.y+30-H*0.58)); player.rider=null;
-  cpDeaths={}; cameo=(LV.cameo||[]).map(c=>({x:c.x,y:c.y,say:c.say,st:'wait',t:0})); lumi={x:player.x-30,y:player.y-50,a:0,say:"",sayT:0,alert:0,face:1,sadT:0,happyT:0};
+  cpDeaths={}; cameo=(LV.cameo||[]).map(c=>({x:c.x,y:c.y,say:c.say,st:'wait',t:0})); lumiPend=null; lumiShown=9; lumi={x:player.x-30,y:player.y-50,a:0,say:"",sayT:0,alert:0,face:1,sadT:0,happyT:0};
 }
 resetLevel();
 
@@ -539,7 +540,7 @@ const nOK=n=>NI[n]&&NI[n].complete&&NI[n].naturalWidth>0;
 // k — масштаб к размеру кадра; mode 'b' — низ кадра в точке y, 'c' — центр; flip — зеркально
 function nDraw(n,cx,y,k,mode,flip,alpha){ const m=NMETA[n], w=m.w*k, hh=m.h*k; ctx.save(); if(alpha!==undefined) ctx.globalAlpha=alpha; ctx.translate(cx,0); if(flip) ctx.scale(-1,1); ctx.drawImage(NI[n],-w/2,mode==='b'?y-hh:y-hh/2,w,hh); ctx.restore(); }
 function puff(x,y,col,n){ for(let i=0;i<(n||6);i++) parts.push(mkPart(x,y,col)); }
-function lumiSay(t,sec){ lumi.say=t; lumi.sayT=sec||5; }
+function lumiSay(t,sec){ if(lumi.say===t&&lumi.sayT>0) return; if(lumi.sayT>0&&lumiShown<1.5){ lumiPend={t,sec:sec||5}; return; } lumi.say=t; lumi.sayT=sec||5; lumiShown=0; lumiPend=null; }
 // Ёжик-клубок: идёт → сворачивается (предупреждение 1 с) → катится 1,8 с (колючки) → отдыхает мягким клубком: сверху он пружинит
 function updateHog(e,p,pb){
   e.stT-=DT; if(e.cd>0) e.cd-=DT;
@@ -622,6 +623,7 @@ const LUMI_HINTS=[
   ['N',e=>e.type==='N'&&e.role===0,'Это ёжик Тимка. Подойди — он просит о помощи!'],
 ];
 function updateLumi(p){
+  lumiShown+=DT; if(lumiPend&&(lumi.sayT<=0||lumiShown>=1.5)){ lumi.say=lumiPend.t; lumi.sayT=lumiPend.sec; lumiShown=0; lumiPend=null; }
   lumi.a+=DT; if(lumi.sayT>0) lumi.sayT-=DT; if(lumi.sadT>0) lumi.sadT-=DT; if(lumi.happyT>0) lumi.happyT-=DT;
   let hz=null, hd=1e9;
   for(const e of enemies){ if(!e.alive||e.type==='B'||e.type==='Z'||e.type==='T') continue; if(!(e.st==='warn'||e.st==='shake'||e.st==='ring')) continue;
@@ -634,6 +636,7 @@ function updateLumi(p){
     const vis=f=>enemies.some(e=>f(e)&&e.x-camX>0&&e.x-camX<W&&Math.abs(e.y-p.y)<460);
     for(const [k,f,text] of LUMI_HINTS) if(!lumiSeen[k]&&vis(f)){ lumiSeen[k]=1; lumiSay(text,6); break; }
     if(lumi.sayT<=0&&!lumiSeen.y&&tile(Math.floor(p.x/T)+3,Math.floor((p.y+p.h-2)/T))==='y'){ lumiSeen.y=1; lumiSay('Липкий мёд! Тут бежится медленно. Можно обойти по облакам сверху.',6); }
+    if(lumi.sayT<=0&&!lumiSeen.w&&(LV.wind||[]).some(z=>windOn(z)&&p.x>z.x&&p.x<z.x+z.w&&p.y>z.y&&p.y<z.y+z.h)){ lumiSeen.w=1; lumiSay('Здесь дует ветер: в прыжке он слегка сносит. Подожди паузу или поправь прыжок.',6); }
     if(lumi.sayT<=0&&!lumiSeen.l){ for(const k of flies){ const q=k.split(','); if(q[0]*T-camX>0&&q[0]*T-camX<W&&Math.abs(q[1]*T-p.y)<460){ lumiSeen.l=1; lumiSay('Сердечко! Оно прибавит жизнь: максимум станет на одну больше.',6); break; } } }
     if(lumi.sayT<=0&&!lumiSeen.f&&movers.some(m=>m.ferry&&m.x-camX>0&&m.x-camX<W)){ lumiSeen.f=1; lumiSay('Лягушка Квака перевезёт нас через воду. Встань на её лист и подожди!',6); }
     if(lumi.sayT<=0&&!lumiSeen.r&&movers.some(m=>m.rb==='rainbow'&&m.x-camX>0&&m.x-camX<W)){ lumiSeen.r=1; lumiSay('Тут спрятан радужный мостик! Выстрели в него — он проявится на 9 секунд.',6); }
@@ -707,7 +710,7 @@ function drawLumi(){
 }
 function drawLumiBubble(x,y){
   if(lumi.sayT>0){ ctx.globalAlpha=Math.min(1,lumi.sayT*2); const f='700 18px Nunito,system-ui,sans-serif', lines=wrapLines(lumi.say,260,f), bw=290, bh=lines.length*23+18;
-    const bx=Math.max(10,Math.min(W-bw-10,x-bw/2)), by=Math.max(camY+10,y-40-bh);
+    const bx=Math.max(10,Math.min(W-bw-10,x-bw/2)), by=Math.max(camY+(toastT>0?122:10),y-40-bh);
     ctx.fillStyle='rgba(255,255,255,.95)'; rr(bx,by,bw,bh,14); ctx.fill(); ctx.fillStyle='#3a4378'; ctx.font=f; lines.forEach((t,i)=>ctx.fillText(t,bx+14,by+26+i*23)); ctx.globalAlpha=1; }
 }
 function drawHog(e){
@@ -1268,12 +1271,15 @@ function drawT(e){
 }
 function drawWindZones(){
   if(!LV.wind||!LV.wind.length) return;
-  for(const z of LV.wind){ const on=windOn(z), soon=!on&&windSoon(z); if(!on&&!soon) continue;
-    const cnt=Math.max(3,Math.round(z.w/150)); ctx.save(); ctx.globalAlpha=on?0.85:(0.25+0.15*Math.sin(time*10));
-    for(let i=0;i<cnt;i++){ const span=z.w+160, ph=((time*130*z.dir+i*span/cnt)%span+span)%span, x=z.x+ph-80-camX, y=z.y+((i*89)%Math.max(60,z.h-70))+20, n=((Math.floor(time*6)+i)%2)?'wind1':'wind2';
-      if(x<-140||x>W+140) continue;
-      if(cOK(n)){ ctx.save(); ctx.translate(x+63,y+29); ctx.scale(z.dir>0?1:-1,1); ctx.drawImage(CI[n],-63,-29,126,59); ctx.restore(); } else { ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fillRect(x,y,100,6); } }
-    ctx.restore(); }
+  const pcx=player.x+player.w/2, pcy=player.y+player.h/2;
+  LV.wind.forEach((z,zi)=>{ const on=windOn(z), soon=!on&&windSoon(z); if(!on&&!soon) return; if(z.x+z.w<camX-40||z.x>camX+W+40) return;
+    ctx.save(); ctx.lineCap='round'; ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+    const N=on?9:5, sp=on?140:50, span=z.w+240;   // тонкие полупрозрачные штрихи: немного и только вокруг героя
+    for(let i=0;i<N;i++){ const h1=((zi*131+i*79)%997)/997, h2=((zi*71+i*113)%991)/991;
+      const px=z.x+(((h1*span+z.dir*time*sp)%span)+span)%span-120, py=z.y+h2*z.h, d=Math.hypot((px-pcx)/540,(py-pcy)/320); if(d>=1) continue;
+      ctx.globalAlpha=(on?.40:.16)*Math.min(1,(1-d)*1.6); const L=30+((i*17)%28), x=px-camX;
+      ctx.beginPath(); ctx.moveTo(x,py); ctx.quadraticCurveTo(x+z.dir*L*.55,py-5,x+z.dir*L,py); ctx.stroke(); }
+    ctx.restore(); });
 }
 function drawLighthouse(){ if(LEVEL!==3||!LV.arena) return; const A=LV.arena, n=bossDone?'lh2':'lh1'; if(!cOK(n)) return; const m=CMETA[n], k=1.15; ctx.drawImage(CI[n],A.lhX-camX-m.w*k/2,A.floorY-m.h*k+8,m.w*k,m.h*k); }
 function drawValves(){
@@ -1536,12 +1542,11 @@ function checkOnceHints(){
   if(near(e=>e.type==='n')&&give('n','Улитка: прыгни ей на голову или нажми '+FIRE+' (выстрел)',['bf','bj'])) return;
   if(tile(Math.floor((player.x+17)/T)+3,Math.floor((player.y+30)/T)+1)==='^'&&give('sp','Розовая пружинка подбросит тебя высоко',[])) return;
 }
-const hintEl=document.createElement('div'); hintEl.id='hint'; document.body.appendChild(hintEl);
 let hintTextCur='';
 function updateHintDom(dt){
   if(onceT>0) onceT-=dt; checkOnceHints();
   const hh=computeHint();
-  if(hh.text!==hintTextCur){ hintEl.textContent=hh.text; hintEl.style.display=hh.text?'block':'none'; hintTextCur=hh.text; }
+  if(hh.text!==hintTextCur){ hintTextCur=hh.text; if(hh.text) lumiSay(hh.text,4.5); }
   for(const id of ['bf','bj','bl','br','bc']){ const el=document.getElementById(id); if(el) el.classList.toggle('pulse',hh.btns.includes(id)); }
   document.getElementById('joy').classList.toggle('pulse',hh.btns.includes('bl')||hh.btns.includes('br'));
   updateTutorial();
@@ -1550,12 +1555,13 @@ function updateHintDom(dt){
 const tutNames=[['joy','бег — джойстик'],['bj','прыжок'],['bf','выстрел'],['bc','плащ']];
 const tutEls={}; for(const [id,txt] of tutNames){ const d=document.createElement('div'); d.className='tutlbl'; d.textContent=txt; document.body.appendChild(d); tutEls[id]=d; }
 function updateTutorial(){
+  for(const [id] of tutNames) tutEls[id].style.display='none'; return;
   const on=state==='play'&&touchMode()&&(save.tutRuns||0)<=3&&time<10;
   for(const [id] of tutNames){ const d=tutEls[id], el=document.getElementById(id); if(!on||!el||getComputedStyle(el).display==='none'){ d.style.display='none'; continue; }
     const r=el.getBoundingClientRect(); let cx=r.left+r.width/2; d.style.display='block'; d.style.left=Math.min(innerWidth-d.offsetWidth-6,Math.max(4,cx-d.offsetWidth/2))+'px'; d.style.top=Math.max(4,r.top-d.offsetHeight-8)+'px'; }
 }
 // ---------- Управление ----------
-function startGame(n){ if(n)LEVEL=n; if(state==='menu'){ save.cape.charges=2; store(); } resetLevel(); state='play'; save.tutRuns=(save.tutRuns||0)+1; store(); toast(touchMode()?'Бег — джойстик слева · прыжок ⬆ · выстрел ✦ · плащ-невидимка':'Бег ← → · прыжок Пробел · выстрел J · плащ E',5); onceT=0; try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();}catch(e){}
+function startGame(n){ if(n)LEVEL=n; if(state==='menu'){ save.cape.charges=2; store(); } resetLevel(); state='play'; save.tutRuns=(save.tutRuns||0)+1; store(); lumiSay(touchMode()?'Бег — джойстик слева. Справа: прыжок ⬆, выстрел ✦ и плащ.':'Бег ← →, прыжок Пробел, выстрел J, плащ E.',6); onceT=0; try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();}catch(e){}
   if(n) openStory(STORY.pre[LEVEL]); }   // вступление показывается при запуске уровня из меню или после предыдущего
 function advance(){ if(state==='done'){ const go=()=>{ if(LEVEL<3) startGame(LEVEL+1); else startGame(); }; openStory(STORY.post[LEVEL],go); } else startGame(); }
 function setKey(k,v){ if(k==='jump'&&v&&!keys.jump) jumpPressed=true; keys[k]=v; }

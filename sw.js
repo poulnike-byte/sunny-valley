@@ -1,5 +1,5 @@
 // Офлайн-кеш игры. Версию CACHE менять при каждом обновлении игры.
-const CACHE = 'sunny-valley-v3';
+const CACHE = 'sunny-valley-v4';
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);

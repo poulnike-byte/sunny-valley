@@ -8,7 +8,7 @@
   html,body{margin:0;height:100%;background:#13206B;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:Nunito,system-ui,sans-serif}
   *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none}
   html,body{position:fixed;width:100%;height:100%;overscroll-behavior:none}
-  #wrap{position:fixed;top:0;bottom:0;left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);display:flex;align-items:center;justify-content:center}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
   #rot span{display:block;max-width:80vw}
   #rot{box-sizing:border-box;width:100%;height:100%;left:0;top:0;position:fixed;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;background:#13206B;color:#fff;font-weight:800;text-align:center;padding:24px;font-size:22px;line-height:1.3}
   #rot b{font-size:72px;display:block;margin-bottom:10px;animation:rotp 1.6s ease-in-out infinite}
@@ -22,7 +22,7 @@
   #bl{left:max(16px,env(safe-area-inset-left))}
   #br{left:calc(max(16px,env(safe-area-inset-left)) + clamp(80px,15vmin,130px))}
   #bj{right:max(16px,env(safe-area-inset-right));width:clamp(80px,15vmin,130px);height:clamp(80px,15vmin,130px)}
-  #bp{background:url(assets/world/ui_pause.png) center/contain no-repeat!important;border:none!important;font-size:0;position:fixed;top:10px;right:10px;width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.55);border:2px solid #fff;color:#13206B;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  #bp{background:url(assets/world/ui_pause.png) center/contain no-repeat!important;border:none!important;font-size:0;position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.55);border:2px solid #fff;color:#13206B;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .btn{background:center/contain no-repeat;border:none;box-shadow:none;font-size:0;color:transparent}
   #bl{background-image:url(assets/world/ui_left.png)} #bl.on{background-image:url(assets/world/ui_left_p.png)}
   #br{background-image:url(assets/world/ui_right.png)} #br.on{background-image:url(assets/world/ui_right_p.png)}
@@ -92,7 +92,7 @@ function buildLevel(n){
   const lily=(x,y,tiles=3)=>mover(x,y,tiles,0,0,{lily:true}); const cam=[];   // кувшинка: стоячая опора, тонет под героем
   const block=(x,y,w,h)=>{ for(let i=0;i<w;i++) for(let j=0;j<h;j++) set(x+i,y+j,'#'); };
   const plat=(x,y,n)=>{ for(let i=0;i<n;i++) set(x+i,y,'='); };
-  const suns=(x,y,n,dx=1)=>{ for(let i=0;i<n;i++) set(x+i*dx,y,'o'); };
+  const suns=(x,y,n,dx=1)=>{ const c=n>=5?3:1; for(let i=0;i<c;i++){ const j=(c===1)?Math.floor((n-1)/2):Math.round(i*(n-1)/(c-1)); set(x+j*dx,y,'o'); } };   // не больше 3 солнышек в группе, обычно одно
   const thorn=(x,k=1)=>{ for(let i=0;i<k;i++) set(x+i,11,'s'); };
   const sp=(x,y=11)=>set(x,y,'^'), put=set;
   if(n===1){
@@ -240,13 +240,16 @@ const isOneWay=(tx,ty)=>tile(tx,ty)==='=';
 // ---------- Состояние ----------
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 // Во весь экран: высота мира фиксирована (720), ширина подстраивается под пропорции экрана (1280..1800).
+let SAFEL=0;   // отступ слева под вырез iPhone, в единицах холста (только для счётчиков)
 function fitScreen(){
-  const wrap=document.getElementById('wrap'), sw=wrap.clientWidth||innerWidth, sh=wrap.clientHeight||innerHeight;
+  const wrap=document.getElementById('wrap'), sw=Math.min(wrap.clientWidth||innerWidth,innerWidth||9999), sh=Math.min(wrap.clientHeight||innerHeight,innerHeight||9999);
   const nw=Math.max(1280,Math.min(1800,Math.round(H*sw/sh/2)*2));
   if(cv.width!==nw){ W=nw; cv.width=nw; }
   const k=Math.min(sw/W,sh/H); cv.style.width=Math.round(W*k)+'px'; cv.style.height=Math.round(H*k)+'px';
+  let sa=document.getElementById('sa'); if(!sa){ sa=document.createElement('div'); sa.id='sa'; sa.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding-left:env(safe-area-inset-left,0px)'; document.body.appendChild(sa); }
+  SAFEL=Math.round((parseFloat(getComputedStyle(sa).paddingLeft)||0)/k);
 }
-fitScreen(); addEventListener('resize',fitScreen); addEventListener('orientationchange',()=>setTimeout(fitScreen,200));
+fitScreen(); addEventListener('resize',fitScreen); addEventListener('orientationchange',()=>{ for(const t of [100,300,700,1300]) setTimeout(fitScreen,t); }); if(window.visualViewport) visualViewport.addEventListener('resize',fitScreen); document.addEventListener('DOMContentLoaded',fitScreen); addEventListener('load',()=>{ fitScreen(); setTimeout(fitScreen,500); });
 const SAVE='yamogu_sunny_valley_v1';
 let save={best:{},char:'vika'};
 try{ Object.assign(save,JSON.parse(localStorage.getItem(SAVE)||'{}')); }catch(e){}
@@ -1145,9 +1148,9 @@ const m_h=nn=>CMETA[nn].h*0.3;
 function cDraw(n,x,y,k,anchorBottom){ const m=CMETA[n], w=m.w*k, hh=m.h*k; ctx.drawImage(CI[n],x-w/2,anchorBottom?y-hh:y-hh/2,w,hh); }
 function drawFireflyArt(x,y){
   if(!cOK('firefly')) return false;
-  const by=y+Math.sin(time*2+x)*4, glow=0.35+0.2*Math.sin(time*5+x*0.01);
+  const wx=x+camX, by=y+Math.sin(time*2+wx)*4, glow=0.35+0.2*Math.sin(time*5+wx*0.01);
   const g=ctx.createRadialGradient(x,by,2,x,by,28); g.addColorStop(0,'rgba(255,240,140,'+glow+')'); g.addColorStop(1,'rgba(255,240,140,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,by,28,0,7); ctx.fill();
-  ctx.save(); ctx.translate(x,by); ctx.rotate(Math.sin(time*3+x)*0.08); cDraw('firefly',0,0,0.36,false); ctx.restore(); return true;
+  ctx.save(); ctx.translate(x,by); ctx.rotate(Math.sin(time*3+wx)*0.08); cDraw('firefly',0,0,0.36,false); ctx.restore(); return true;
 }
 function drawDragonArt(e){
   if(!cOK('drg01')) return false;
@@ -1182,7 +1185,7 @@ function drawFireflyHud(i,got){ const n=got?'firefly':'firefly_off'; if(!cOK(n))
 function drawHeartHud(i){ const n=i<hp?'energy_on':'energy_off'; if(!cOK(n)) return false; cDraw(n,38+i*36,88,0.3,false); return true; }
 function drawFirefly(x,y){
   if(drawFireflyArt(x,y)) return;
-  const t=time*5+x*0.01, glow=0.5+0.35*Math.sin(t), by=y+Math.sin(time*2+x)*4;
+  const wx=x+camX, t=time*5+wx*0.01, glow=0.5+0.35*Math.sin(t), by=y+Math.sin(time*2+wx)*4;
   const g=ctx.createRadialGradient(x,by,2,x,by,26); g.addColorStop(0,'rgba(230,255,106,'+glow+')'); g.addColorStop(1,'rgba(230,255,106,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,by,26,0,7); ctx.fill();
   ctx.fillStyle='#fff'; ctx.globalAlpha=.8; ctx.beginPath(); ctx.ellipse(x-7,by-7,8,4,-0.6+Math.sin(t*4)*0.3,0,7); ctx.ellipse(x+7,by-7,8,4,0.6-Math.sin(t*4)*0.3,0,7); ctx.fill(); ctx.globalAlpha=1;
   ctx.fillStyle='#5a4a2a'; ctx.beginPath(); ctx.ellipse(x,by-2,5,6,0,0,7); ctx.fill(); ctx.fillStyle='#e6ff6a'; ctx.beginPath(); ctx.ellipse(x,by+5,6,7,0,0,7); ctx.fill();
@@ -1307,11 +1310,13 @@ function drawShots(){
 function heartPath(x,y,s){ ctx.beginPath(); ctx.moveTo(x,y+s*0.9); ctx.bezierCurveTo(x-s*1.5,y-s*0.3,x-s*0.5,y-s*1.2,x,y-s*0.35); ctx.bezierCurveTo(x+s*0.5,y-s*1.2,x+s*1.5,y-s*0.3,x,y+s*0.9); ctx.fill(); }
 function drawCombatHUD(){
   { const bo=enemies.find(e=>e.type==='B'||e.type==='Z'||e.type==='T'); if(bo&&(bo.alive||bossHits>0)&&Math.abs(player.x-bo.x)<1000&&!bossDone){ const N=(bo.type==='T')?6:3, bw=(N===6)?300:240; ctx.fillStyle='rgba(255,255,255,.75)'; rr(W/2-bw/2,18,bw,40,20); ctx.fill(); ctx.fillStyle='#13206B'; ctx.font='800 16px Nunito,system-ui,sans-serif'; ctx.textAlign='center'; ctx.fillText(bo.name||'Хранитель',W/2-(N===6?84:52),44); ctx.textAlign='left'; for(let i=0;i<N;i++){ const gx=(N===6)?(W/2-8+i*24+(i>=2?6:0)+(i>=4?6:0)):(W/2+30+i*30); ctx.fillStyle=i<bossHits?'#ffd23a':'rgba(200,205,225,.9)'; ctx.beginPath(); ctx.arc(gx,38,N===6?9:10,0,7); ctx.fill(); ctx.strokeStyle='rgba(19,32,107,.4)'; ctx.lineWidth=2; ctx.stroke(); } } }
+  ctx.save(); ctx.translate(SAFEL,0);
   for(let i=0;i<3;i++){ if(!drawHeartHud(i)){ ctx.fillStyle=i<hp?'#ff6fa3':'rgba(200,205,225,.8)'; heartPath(34+i*34,86,13); } }
   ctx.font='700 15px Nunito,system-ui,sans-serif'; ctx.fillStyle='#13206B';
   for(let i=0;i<3;i++){ const got=i<flyTotal-flies.size; if(!drawFireflyHud(i,got)){ ctx.fillStyle=got?'#c8e34a':'rgba(255,255,255,.65)'; ctx.beginPath(); ctx.arc(150+i*30,84,10,0,7); ctx.fill(); ctx.strokeStyle='rgba(19,32,107,.4)'; ctx.lineWidth=2; ctx.stroke(); } }
   if(quest.total>0&&quest.given&&!quest.rewarded){ ctx.fillStyle='rgba(255,255,255,.75)'; rr(16,142,120,32,16); ctx.fill(); if(nOK('acorn4')) nDraw('acorn4',38,158,.13,'c',false); ctx.fillStyle='#13206B'; ctx.font='800 18px Nunito,system-ui,sans-serif'; ctx.fillText(quest.have+' / '+quest.total+' Тимке',56,164); }
   if(capeT>0){ ctx.fillStyle='rgba(120,90,200,.85)'; rr(16,108,150,26,13); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='800 15px Nunito,system-ui,sans-serif'; ctx.fillText('Плащ: '+Math.ceil(capeT)+' с',30,126); }
+  ctx.restore();
   if(toastT>0){ ctx.globalAlpha=Math.min(1,toastT*2); ctx.font='800 24px Nunito,system-ui,sans-serif'; const w=ctx.measureText(toastText).width+40; ctx.fillStyle='rgba(19,32,107,.78)'; rr(W/2-w/2,66,w,44,22); ctx.fill(); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.fillText(toastText,W/2,96); ctx.textAlign='left'; ctx.globalAlpha=1; }
 }
 function drawEnemies(){
@@ -1388,9 +1393,10 @@ function drawPlayer(){
 }
 function drawHUD(){
   const got=sunTotal-suns.size;
+  ctx.save(); ctx.translate(SAFEL,0);
   ctx.fillStyle='rgba(255,255,255,.75)'; rr(16,14,200,50,25); ctx.fill();
   if(wOK('ui_sun')){ ctx.drawImage(WI.ui_sun,24,16,44,44); } else { ctx.fillStyle='#ffd23a'; ctx.beginPath(); ctx.arc(46,39,15,0,7); ctx.fill(); ctx.fillStyle='#ffb300'; ctx.beginPath(); ctx.arc(46,39,8,0,7); ctx.fill(); }
-  ctx.fillStyle='#13206B'; ctx.font='800 26px Nunito,system-ui,sans-serif'; ctx.textAlign='left'; ctx.fillText(got+' / '+sunTotal,72,48);
+  ctx.fillStyle='#13206B'; ctx.font='800 26px Nunito,system-ui,sans-serif'; ctx.textAlign='left'; ctx.fillText(got+' / '+sunTotal,72,48); ctx.restore();
   // прогресс пути
   const pr=(LEVEL===3&&LV.arena)?Math.max(0,Math.min(1,(LV.arena.startY-player.y)/(LV.arena.startY-LV.arena.floorY))):Math.min(1,player.x/(finishX*T)); ctx.fillStyle='rgba(255,255,255,.6)'; rr(W/2-160,22,320,12,6); ctx.fill(); ctx.fillStyle='#5cc24a'; rr(W/2-160,22,Math.max(12,320*pr),12,6); ctx.fill();
   drawCombatHUD();

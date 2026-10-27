@@ -856,10 +856,14 @@ function render(){
 
 // ---------- Цикл ----------
 let acc=0,last=performance.now();
+let domN=0, bcTxt='';
 function frame(now){
-  acc+=Math.min(.1,(now-last)/1000); last=now;
+  const raw=(now-last)/1000;
+  if(raw<0.0125){ requestAnimationFrame(frame); return; }
+  let dtf=Math.min(.1,raw); if(Math.abs(dtf-DT)<0.003) dtf=DT;
+  acc+=dtf; last=now;
   const FREEZE=/freeze=1/.test(location.search); while(acc>=DT){ if((state==='play'||state==='done')&&!FREEZE){ step({left:keys.left,right:keys.right,jump:keys.jump,jumpDown:jumpPressed&&state==='play',fire:keys.fire,capeDown:capePressed}); if(state==='done'){player.vx=0;} } jumpPressed=false; capePressed=false; time+=0; acc-=DT; }
-  document.getElementById('bp').style.display=(state==='menu')?'none':'flex'; document.body.classList.toggle('menu',state==='menu'); updateHintDom(1/60); { const bcEl=document.getElementById('bc'); const show=save.cape.charges>0||capeGranted===checkpoint.tx||capeT>0; document.body.classList.toggle('nocape',!show); bcEl.innerHTML=capeGranted===checkpoint.tx?'плащ<br>повтор':'плащ<br>×'+save.cape.charges; } render(); requestAnimationFrame(frame);
+  if((domN++%6)===0){ document.getElementById('bp').style.display=(state==='menu')?'none':'flex'; document.body.classList.toggle('menu',state==='menu'); updateHintDom(6/60); { const bcEl=document.getElementById('bc'); const show=save.cape.charges>0||capeGranted===checkpoint.tx||capeT>0; document.body.classList.toggle('nocape',!show); const bt=capeGranted===checkpoint.tx?'плащ<br>повтор':'плащ<br>×'+save.cape.charges; if(bt!==bcTxt){ bcTxt=bt; bcEl.innerHTML=bt; } } } render(); requestAnimationFrame(frame);
 }
 if(!/selftest/.test(location.search)) requestAnimationFrame(frame);
 

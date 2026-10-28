@@ -22,6 +22,7 @@
   #bl{left:max(16px,env(safe-area-inset-left))}
   #br{left:calc(max(16px,env(safe-area-inset-left)) + clamp(80px,15vmin,130px))}
   #bj{right:max(16px,env(safe-area-inset-right));width:clamp(80px,15vmin,130px);height:clamp(80px,15vmin,130px)}
+  #bm{position:fixed;top:max(10px,env(safe-area-inset-top));right:calc(max(10px,env(safe-area-inset-right)) + 58px);width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.55);border:2px solid #fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-user-select:none;user-select:none}
   #bp{background:url(assets/world/ui_pause.png) center/contain no-repeat!important;border:none!important;font-size:0;position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.55);border:2px solid #fff;color:#13206B;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .btn{background:center/contain no-repeat;border:none;box-shadow:none;font-size:0;color:transparent}
   #bl{background-image:url(assets/world/ui_left.png)} #bl.on{background-image:url(assets/world/ui_left_p.png)}
@@ -67,7 +68,7 @@
 <div id="wrap"><canvas id="c" width="1280" height="720"></canvas></div>
 <div id="rot"><b>📱</b><span>Поверни телефон горизонтально, чтобы играть</span></div>
 <div class="btn" id="bf">✦</div><div class="btn" id="bc">плащ</div><div class="btn" id="bl">◀</div><div class="btn" id="br">▶</div><div class="btn" id="bj">⤒</div>
-<div id="joy"><div id="joyk"></div></div><div id="bp"></div>
+<div id="joy"><div id="joyk"></div></div><div id="bp"></div><div id="bm" role="button" aria-label="Звук и музыка"></div>
 <script src="assets/combat/meta.js"></script>
 <script src="assets/story/meta.js"></script>
 <script>
@@ -340,10 +341,10 @@ const sJump=()=>tone(420,.14,'triangle',.09,260), sSun=()=>{tone(880,.08,'sine',
       sBop=()=>tone(200,.12,'square',.05,200);
 
 // ---------- Музыка (файл assets/music/*.mp3; зацикливание плавным перекрытием хвоста и начала) ----------
-// Файл Suno «Bouncy Game Groove» — ВРЕМЕННЫЙ: нужна проверка лицензии (коммерческое использование) до публикации.
+// Трек «Облачный прыжок» (Suno, платный тариф владельца): происхождение и условия — assets/music/CREDITS.md
 const MUS={buf:{},loading:{},master:null,nextAt:0,cur:null,timer:null,started:false,base:.2,XF:2.5};   // base — громкость (файл громкий, звуки игры должны быть слышны); XF — секунды перекрытия
-// Музыка выключена по умолчанию (файла в публичной сборке нет). Включить для проверки: добавить к адресу ?music=1 (запоминается), выключить: ?music=0
-function musEnabled(){ try{ if(/[?&]music=1/.test(location.search)) localStorage.setItem('sv_music','1'); if(/[?&]music=0/.test(location.search)) localStorage.removeItem('sv_music'); return localStorage.getItem('sv_music')==='1'; }catch(e){ return false; } }
+// Музыка включена по умолчанию. Выключить насовсем на этом устройстве: добавить к адресу ?music=0, вернуть: ?music=1 (кнопка 🔊 и клавиша M только заглушают звук)
+function musEnabled(){ try{ if(/[?&]music=1/.test(location.search)) localStorage.setItem('sv_music','1'); if(/[?&]music=0/.test(location.search)) localStorage.setItem('sv_music','0'); return localStorage.getItem('sv_music')!=='0'; }catch(e){ return true; } }
 const musOff=()=>/selftest|shot=/.test(location.search)||!musEnabled();
 function musTarget(){ return muted?0:(state==='pause'?MUS.base*.35:(state==='done'?MUS.base*.6:MUS.base)); }
 async function musLoad(n){ if(MUS.buf[n]||MUS.loading[n]||!ac) return; MUS.loading[n]=1; try{ const r=await fetch('assets/music/'+n+'.mp3'); MUS.buf[n]=await ac.decodeAudioData(await r.arrayBuffer()); }catch(e){} MUS.loading[n]=0; }
@@ -1516,7 +1517,7 @@ function frame(now){
   let dtf=Math.min(.1,raw); if(Math.abs(dtf-DT)<0.003) dtf=DT;
   acc+=dtf; last=now;
   const FREEZE=/freeze=1/.test(location.search); while(acc>=DT){ if((state==='play'||state==='done')&&!FREEZE){ step({left:keys.left,right:keys.right,jump:keys.jump,jumpDown:jumpPressed&&state==='play',fire:keys.fire,capeDown:capePressed}); if(state==='done'){player.vx=0;} } jumpPressed=false; capePressed=false; time+=0; acc-=DT; }
-  if((domN++%6)===0){ document.getElementById('bp').style.display=(state==='menu')?'none':'flex'; document.body.classList.toggle('menu',state==='menu'); updateHintDom(6/60); { const bcEl=document.getElementById('bc'); const show=save.cape.charges>0||capeGranted===checkpoint.tx||capeT>0; document.body.classList.toggle('nocape',!show); const bt=capeGranted===checkpoint.tx?'плащ<br>повтор':'плащ<br>×'+save.cape.charges; if(bt!==bcTxt){ bcTxt=bt; bcEl.innerHTML=bt; } } } const t0=FPSM?performance.now():0; render(); if(FPSM) fpsTick(now,performance.now()-t0); requestAnimationFrame(frame);
+  if((domN++%6)===0){ document.getElementById('bp').style.display=(state==='menu')?'none':'flex'; { const mi=document.getElementById('bm'), mt=muted?'🔇':'🔊'; if(mi.textContent!==mt) mi.textContent=mt; } document.body.classList.toggle('menu',state==='menu'); updateHintDom(6/60); { const bcEl=document.getElementById('bc'); const show=save.cape.charges>0||capeGranted===checkpoint.tx||capeT>0; document.body.classList.toggle('nocape',!show); const bt=capeGranted===checkpoint.tx?'плащ<br>повтор':'плащ<br>×'+save.cape.charges; if(bt!==bcTxt){ bcTxt=bt; bcEl.innerHTML=bt; } } } const t0=FPSM?performance.now():0; render(); if(FPSM) fpsTick(now,performance.now()-t0); requestAnimationFrame(frame);
 }
 // Замер скорости: открыть игру с ?fps=1 — слева снизу «fps / худший кадр / время отрисовки».
 // Запоминается в браузере: ?fps=1 включает насовсем, ?fps=0 выключает.
@@ -1625,6 +1626,7 @@ cv.addEventListener('pointerdown',ev=>{
 });
 addEventListener('pointerdown',()=>{ if(state==='story') storyNext(); });
 document.getElementById('bp').addEventListener('pointerdown',()=>{ if(state==='play')state='pause'; else if(state==='pause')state='play'; });
+document.getElementById('bm').addEventListener('pointerdown',e=>{ e.preventDefault(); muted=!muted; });
 for(const [id,key] of [['bl','left'],['br','right'],['bj','jump'],['bf','fire']]){
   const el=document.getElementById(id);
   const on=e=>{ e.preventDefault(); el.classList.add('on'); setKey(key,true); };

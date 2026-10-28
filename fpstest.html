@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Тест fps</title>
+<style>
+  html,body{margin:0;height:100%;background:#13206B;color:#fff;font-family:system-ui,sans-serif;text-align:center}
+  #n{font-size:30vmin;font-weight:800;line-height:1;margin-top:12vh}
+  #s{font-size:5vmin;margin-top:2vh;opacity:.85;padding:0 16px}
+  #b{position:fixed;left:0;bottom:0;height:14px;width:14px;background:#7CFC7C}
+</style></head>
+<body>
+<div id="n">…</div>
+<div id="s">Пустая страница: ничего не рисует, только считает кадры. На iPhone без ограничений здесь 60 (или 120).</div>
+<div id="b"></div>
+<script>
+let n=0,t0=0,x=0;
+function f(t){ if(!t0)t0=t; n++; x=(x+6)%(innerWidth-14); document.getElementById('b').style.left=x+'px';
+  if(t-t0>=1000){ document.getElementById('n').textContent=Math.round(n*1000/(t-t0)); n=0; t0=t; }
+  requestAnimationFrame(f); }
+requestAnimationFrame(f);
+</script>
+</body></html>

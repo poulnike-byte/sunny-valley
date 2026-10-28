@@ -1499,11 +1499,11 @@ function frame(now){
 // Замер скорости: открыть игру с ?fps=1 — слева снизу «fps / худший кадр / время отрисовки».
 const FPSM=/[?&]fps=1/.test(location.search); let fpsN=0,fpsT=0,fpsWorst=0,fpsR=0,fpsPrev=0,fpsEl=null;
 function fpsTick(now,rt){
-  if(!fpsEl){ fpsEl=document.createElement('div'); fpsEl.style.cssText='position:fixed;left:6px;bottom:6px;z-index:99;background:rgba(0,0,0,.65);color:#7CFC7C;font:700 14px monospace;padding:3px 7px;border-radius:6px;pointer-events:none;white-space:pre'; document.body.appendChild(fpsEl); }
+  if(!fpsEl){ fpsEl=document.createElement('div'); fpsEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:6px;z-index:99;background:rgba(0,0,0,.75);color:#7CFC7C;font:700 16px monospace;padding:4px 10px;border-radius:8px;pointer-events:none;white-space:pre;text-align:center'; fpsEl.textContent='FPS v15: считаю…'; document.body.appendChild(fpsEl); }
   if(fpsPrev){ const d=now-fpsPrev; if(d>fpsWorst) fpsWorst=d; }
   fpsPrev=now; fpsN++; fpsR+=rt;
   if(!fpsT) fpsT=now;
-  if(now-fpsT>=1000){ const f=fpsN*1000/(now-fpsT); fpsEl.style.color=f>=55?'#7CFC7C':f>=40?'#FFD23A':'#FF6B6B'; fpsEl.textContent=f.toFixed(0)+' fps · худший '+fpsWorst.toFixed(0)+' мс · отрисовка '+(fpsR/fpsN).toFixed(1)+' мс\n'+cv.width+'×'+cv.height; fpsN=0; fpsR=0; fpsWorst=0; fpsT=now; }
+  if(now-fpsT>=1000){ const f=fpsN*1000/(now-fpsT); fpsEl.style.color=f>=55?'#7CFC7C':f>=40?'#FFD23A':'#FF6B6B'; fpsEl.textContent='v15 · '+f.toFixed(0)+' fps · худший '+fpsWorst.toFixed(0)+' мс · отрисовка '+(fpsR/fpsN).toFixed(1)+' мс\n'+cv.width+'×'+cv.height; fpsN=0; fpsR=0; fpsWorst=0; fpsT=now; }
 }
 if(!/selftest/.test(location.search)) requestAnimationFrame(frame);
 

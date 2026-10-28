@@ -339,6 +339,24 @@ const sJump=()=>tone(420,.14,'triangle',.09,260), sSun=()=>{tone(880,.08,'sine',
       sBack=()=>tone(300,.25,'sine',.07,-120), sWin=()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.25,'triangle',.09),i*120)),
       sBop=()=>tone(200,.12,'square',.05,200);
 
+// ---------- Музыка (файл assets/music/*.mp3; зацикливание плавным перекрытием хвоста и начала) ----------
+// Файл Suno «Bouncy Game Groove» — ВРЕМЕННЫЙ: нужна проверка лицензии (коммерческое использование) до публикации.
+const MUS={buf:{},loading:{},master:null,nextAt:0,cur:null,timer:null,started:false,base:.2,XF:2.5};   // base — громкость (файл громкий, звуки игры должны быть слышны); XF — секунды перекрытия
+// Музыка выключена по умолчанию (файла в публичной сборке нет). Включить для проверки: добавить к адресу ?music=1 (запоминается), выключить: ?music=0
+function musEnabled(){ try{ if(/[?&]music=1/.test(location.search)) localStorage.setItem('sv_music','1'); if(/[?&]music=0/.test(location.search)) localStorage.removeItem('sv_music'); return localStorage.getItem('sv_music')==='1'; }catch(e){ return false; } }
+const musOff=()=>/selftest|shot=/.test(location.search)||!musEnabled();
+function musTarget(){ return muted?0:(state==='pause'?MUS.base*.35:(state==='done'?MUS.base*.6:MUS.base)); }
+async function musLoad(n){ if(MUS.buf[n]||MUS.loading[n]||!ac) return; MUS.loading[n]=1; try{ const r=await fetch('assets/music/'+n+'.mp3'); MUS.buf[n]=await ac.decodeAudioData(await r.arrayBuffer()); }catch(e){} MUS.loading[n]=0; }
+function musSchedule(){ const b=MUS.buf[MUS.cur]; if(!b||!ac||!MUS.master) return;
+  while(MUS.nextAt<ac.currentTime+4){ const first=MUS.nextAt===0, t=first?ac.currentTime+.1:MUS.nextAt, s=ac.createBufferSource(), g=ac.createGain(), X=MUS.XF, d=b.duration;
+    s.buffer=b; s.connect(g); g.connect(MUS.master);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(1,t+(first?1.5:X)); g.gain.setValueAtTime(1,t+d-X); g.gain.linearRampToValueAtTime(0.0001,t+d);
+    s.start(t); MUS.nextAt=t+d-X; } }
+function musTick(){ if(!MUS.master||!ac) return; MUS.master.gain.setTargetAtTime(musTarget(),ac.currentTime,.35); musSchedule(); }
+function musStart(n){ if(!ac||!MUS.buf[n]||MUS.master) return; MUS.cur=n; MUS.master=ac.createGain(); MUS.master.gain.value=0.0001; MUS.master.connect(ac.destination); MUS.nextAt=0; musSchedule(); MUS.timer=setInterval(musTick,400); }
+function musKick(){ if(MUS.started||musOff()) return; MUS.started=true; musLoad('level').then(()=>musStart('level')); }
+
+
 // ---------- Физика ----------
 const RUN=290, ACC=2400, FRIC=2800, G=1750, JV=-710, MAXFALL=900, CUT=0.45;
 const DT=1/60;
@@ -1631,9 +1649,9 @@ if(/press=1/.test(location.search)){ for(const id of ['bl','br','bj']) document.
 addEventListener('blur',()=>{ if(state==='play')state='pause'; releaseInputs(); });
 addEventListener('pagehide',releaseInputs); addEventListener('orientationchange',releaseInputs);
 for(const ev of ['touchend','touchcancel']) addEventListener(ev,e=>{ if(e.touches&&e.touches.length===0) releaseInputs(); },{passive:true});   // все пальцы подняты — ничего не может оставаться зажатым
-document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='play') state='pause'; if(document.hidden) releaseInputs(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='play') state='pause'; if(document.hidden) releaseInputs(); try{ if(ac&&MUS.master){ if(document.hidden) ac.suspend(); else ac.resume(); } }catch(e){} });
 // iPhone: разблокировать звук первым касанием, запретить зум щипком и прокрутку страницы
-function unlockAudio(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); const b=ac.createBuffer(1,1,22050), s=ac.createBufferSource(); s.buffer=b; s.connect(ac.destination); s.start(0); }catch(e){} }
+function unlockAudio(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); const b=ac.createBuffer(1,1,22050), s=ac.createBufferSource(); s.buffer=b; s.connect(ac.destination); s.start(0); musKick(); }catch(e){} }
 for(const ev of ['touchend','pointerdown','keydown']) addEventListener(ev,unlockAudio,{passive:true});
 for(const ev of ['gesturestart','gesturechange','gestureend']) document.addEventListener(ev,e=>e.preventDefault());
 document.addEventListener('touchmove',e=>{ if(e.touches.length>0) e.preventDefault(); },{passive:false});

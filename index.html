@@ -248,8 +248,8 @@ function fitScreen(){
   const wrap=document.getElementById('wrap'), sw=Math.min(wrap.clientWidth||innerWidth,innerWidth||9999), sh=Math.min(wrap.clientHeight||innerHeight,innerHeight||9999);
   const nw=Math.max(1280,Math.min(1800,Math.round(H*sw/sh/2)*2));
   W=nw; const k=Math.min(sw/W,sh/H);
-  // Внутреннее разрешение холста ~ размеру на экране (на телефоне 1784×720 было лишним и тормозило). ?q=0.5 — задать вручную.
-  const qm=/[?&]q=([0-9.]+)/.exec(location.search); RS=qm?Math.min(1,Math.max(.3,+qm[1]||1)):Math.min(1,Math.max(.6,k));
+  // Внутреннее разрешение холста: полное (1). ?q=0.5 — уменьшить вручную для проверки.
+  const qm=/[?&]q=([0-9.]+)/.exec(location.search); RS=qm?Math.min(1,Math.max(.3,+qm[1]||1)):1;
   const bw=Math.round(W*RS), bh=Math.round(H*RS); if(cv.width!==bw||cv.height!==bh){ cv.width=bw; cv.height=bh; } cv.style.width=Math.round(W*k)+'px'; cv.style.height=Math.round(H*k)+'px';
   let sa=document.getElementById('sa'); if(!sa){ sa=document.createElement('div'); sa.id='sa'; sa.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;padding-left:env(safe-area-inset-left,0px)'; document.body.appendChild(sa); }
   SAFEL=Math.round((parseFloat(getComputedStyle(sa).paddingLeft)||0)/k);
@@ -1506,11 +1506,11 @@ function frame(now){
 let fpsTaps=[]; addEventListener('pointerdown',ev=>{ if(ev.clientY>70||Math.abs(ev.clientX-innerWidth/2)>innerWidth*.2){ fpsTaps=[]; return; } const t=performance.now(); fpsTaps=fpsTaps.filter(x=>t-x<1500); fpsTaps.push(t); if(fpsTaps.length>=3){ fpsTaps=[]; FPSM=!FPSM; try{ FPSM?localStorage.setItem('yamogu_fps','1'):localStorage.removeItem('yamogu_fps'); }catch(e){} if(!FPSM&&fpsEl){ fpsEl.remove(); fpsEl=null; fpsT=0; } } },true);
 let FPSM=(()=>{ try{ if(/[?&]fps=1/.test(location.search)) localStorage.setItem('yamogu_fps','1'); else if(/[?&]fps=0/.test(location.search)) localStorage.removeItem('yamogu_fps'); return localStorage.getItem('yamogu_fps')==='1'; }catch(e){ return /[?&]fps=1/.test(location.search); } })(); let fpsN=0,fpsT=0,fpsWorst=0,fpsR=0,fpsPrev=0,fpsEl=null;
 function fpsTick(now,rt){
-  if(!fpsEl){ fpsEl=document.createElement('div'); fpsEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:6px;z-index:99;background:rgba(0,0,0,.75);color:#7CFC7C;font:700 16px monospace;padding:4px 10px;border-radius:8px;pointer-events:none;white-space:pre;text-align:center'; fpsEl.textContent='FPS v18: считаю…'; document.body.appendChild(fpsEl); }
+  if(!fpsEl){ fpsEl=document.createElement('div'); fpsEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:6px;z-index:99;background:rgba(0,0,0,.75);color:#7CFC7C;font:700 16px monospace;padding:4px 10px;border-radius:8px;pointer-events:none;white-space:pre;text-align:center'; fpsEl.textContent='FPS v19: считаю…'; document.body.appendChild(fpsEl); }
   if(fpsPrev){ const d=now-fpsPrev; if(d>fpsWorst) fpsWorst=d; }
   fpsPrev=now; fpsN++; fpsR+=rt;
   if(!fpsT) fpsT=now;
-  if(now-fpsT>=1000){ const f=fpsN*1000/(now-fpsT); fpsEl.style.color=f>=55?'#7CFC7C':f>=40?'#FFD23A':'#FF6B6B'; fpsEl.textContent='v18 · '+f.toFixed(0)+' fps · худший '+fpsWorst.toFixed(0)+' мс · отрисовка '+(fpsR/fpsN).toFixed(1)+' мс\n'+cv.width+'×'+cv.height; fpsN=0; fpsR=0; fpsWorst=0; fpsT=now; }
+  if(now-fpsT>=1000){ const f=fpsN*1000/(now-fpsT); fpsEl.style.color=f>=55?'#7CFC7C':f>=40?'#FFD23A':'#FF6B6B'; fpsEl.textContent='v19 · '+f.toFixed(0)+' fps · худший '+fpsWorst.toFixed(0)+' мс · отрисовка '+(fpsR/fpsN).toFixed(1)+' мс\n'+cv.width+'×'+cv.height; fpsN=0; fpsR=0; fpsWorst=0; fpsT=now; }
 }
 if(!/selftest/.test(location.search)) requestAnimationFrame(frame);
 

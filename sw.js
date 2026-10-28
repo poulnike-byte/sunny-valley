@@ -1,5 +1,5 @@
 ﻿// РћС„Р»Р°Р№РЅ-РєРµС€ РёРіСЂС‹. Р’РµСЂСЃРёСЋ CACHE РјРµРЅСЏС‚СЊ РїСЂРё РєР°Р¶РґРѕРј РѕР±РЅРѕРІР»РµРЅРёРё РёРіСЂС‹.
-const CACHE = 'sunny-valley-v13';
+const CACHE = 'sunny-valley-v14';
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);

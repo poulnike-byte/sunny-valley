@@ -1497,13 +1497,14 @@ function frame(now){
   if((domN++%6)===0){ document.getElementById('bp').style.display=(state==='menu')?'none':'flex'; document.body.classList.toggle('menu',state==='menu'); updateHintDom(6/60); { const bcEl=document.getElementById('bc'); const show=save.cape.charges>0||capeGranted===checkpoint.tx||capeT>0; document.body.classList.toggle('nocape',!show); const bt=capeGranted===checkpoint.tx?'плащ<br>повтор':'плащ<br>×'+save.cape.charges; if(bt!==bcTxt){ bcTxt=bt; bcEl.innerHTML=bt; } } } const t0=FPSM?performance.now():0; render(); if(FPSM) fpsTick(now,performance.now()-t0); requestAnimationFrame(frame);
 }
 // Замер скорости: открыть игру с ?fps=1 — слева снизу «fps / худший кадр / время отрисовки».
-const FPSM=/[?&]fps=1/.test(location.search); let fpsN=0,fpsT=0,fpsWorst=0,fpsR=0,fpsPrev=0,fpsEl=null;
+// Запоминается в браузере: ?fps=1 включает насовсем, ?fps=0 выключает.
+const FPSM=(()=>{ try{ if(/[?&]fps=1/.test(location.search)) localStorage.setItem('yamogu_fps','1'); else if(/[?&]fps=0/.test(location.search)) localStorage.removeItem('yamogu_fps'); return localStorage.getItem('yamogu_fps')==='1'; }catch(e){ return /[?&]fps=1/.test(location.search); } })(); let fpsN=0,fpsT=0,fpsWorst=0,fpsR=0,fpsPrev=0,fpsEl=null;
 function fpsTick(now,rt){
-  if(!fpsEl){ fpsEl=document.createElement('div'); fpsEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:6px;z-index:99;background:rgba(0,0,0,.75);color:#7CFC7C;font:700 16px monospace;padding:4px 10px;border-radius:8px;pointer-events:none;white-space:pre;text-align:center'; fpsEl.textContent='FPS v15: считаю…'; document.body.appendChild(fpsEl); }
+  if(!fpsEl){ fpsEl=document.createElement('div'); fpsEl.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:6px;z-index:99;background:rgba(0,0,0,.75);color:#7CFC7C;font:700 16px monospace;padding:4px 10px;border-radius:8px;pointer-events:none;white-space:pre;text-align:center'; fpsEl.textContent='FPS v16: считаю…'; document.body.appendChild(fpsEl); }
   if(fpsPrev){ const d=now-fpsPrev; if(d>fpsWorst) fpsWorst=d; }
   fpsPrev=now; fpsN++; fpsR+=rt;
   if(!fpsT) fpsT=now;
-  if(now-fpsT>=1000){ const f=fpsN*1000/(now-fpsT); fpsEl.style.color=f>=55?'#7CFC7C':f>=40?'#FFD23A':'#FF6B6B'; fpsEl.textContent='v15 · '+f.toFixed(0)+' fps · худший '+fpsWorst.toFixed(0)+' мс · отрисовка '+(fpsR/fpsN).toFixed(1)+' мс\n'+cv.width+'×'+cv.height; fpsN=0; fpsR=0; fpsWorst=0; fpsT=now; }
+  if(now-fpsT>=1000){ const f=fpsN*1000/(now-fpsT); fpsEl.style.color=f>=55?'#7CFC7C':f>=40?'#FFD23A':'#FF6B6B'; fpsEl.textContent='v16 · '+f.toFixed(0)+' fps · худший '+fpsWorst.toFixed(0)+' мс · отрисовка '+(fpsR/fpsN).toFixed(1)+' мс\n'+cv.width+'×'+cv.height; fpsN=0; fpsR=0; fpsWorst=0; fpsT=now; }
 }
 if(!/selftest/.test(location.search)) requestAnimationFrame(frame);
 
